@@ -9,6 +9,7 @@ VRAM_CHARS = $0000
 VRAM_BG1 = $0000
 ZERO = $0069
 VRAM_SIZE = $ffff
+CGRAM_SIZE = $0200
 
 .segment "CODE"
 .proc ResetHandler
@@ -17,8 +18,13 @@ VRAM_SIZE = $ffff
    clc ; carry clear
    xce ; swap carry and emulation bits
 
+   jsr ClearCGRAM
+   jsr SetPalette
    jsr ClearVRAM
    jsr CharLoad ; load character data to VRAM
+
+   lda #%00000001
+   sta BGMODE
 
    ; enable non-maskable interrupt
    lda #$81
@@ -55,7 +61,7 @@ VRAM_SIZE = $ffff
 .proc ClearVRAM
    setXY16
    ldx #0
-   stx ZERO
+   stx ZERO ; set up source to be zero
 
    ldx #%10000000 ; vram auto increment
    sta VMAIN
@@ -71,7 +77,42 @@ VRAM_SIZE = $ffff
    ldx #VRAM_SIZE ; copy bytes for the entire VRAM
    stx DASxL
    
-   lda #%00001001
+   lda #%00001001 ; the 1 in the middle makes it copy 1 address (ZERO) over and over
+   sta DMAPx
+
+   lda #1
+   sta MDMAEN ; start transfer
+
+   setXY8
+   rts
+.endproc
+
+.proc SetPalette
+   stz CGADD
+   lda #%01111100
+   sta CGDATA
+   stz CGDATA
+   rts
+.endproc
+.proc ClearCGRAM
+   setXY16
+   ldx #0
+   stx ZERO ; set up source to be zero
+
+   stz CGADD
+
+   ldx #ZERO ; source address
+   stx A1TxL
+
+   stz A1Bx ; source bank
+
+   lda #$22 ; LSB of CGADD address
+   sta BBADx
+
+   ldx #CGRAM_SIZE ; copy bytes for the entire VRAM
+   stx DASxL
+   
+   lda #%00001010 ; the 1 in the middle makes it copy 1 address (ZERO) over and over
    sta DMAPx
 
    lda #1
