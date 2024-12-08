@@ -35,7 +35,6 @@ VRAM_BG1 = $0000
    
    lda #1
    sta MDMAEN
-      
 
    ; enable non-maskable interrupt
    lda #$81
