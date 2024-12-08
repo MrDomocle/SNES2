@@ -7,6 +7,8 @@
 
 VRAM_CHARS = $0000
 VRAM_BG1 = $0000
+ZERO = $0069
+VRAM_SIZE = $ffff
 
 .segment "CODE"
 .proc ResetHandler
@@ -14,7 +16,17 @@ VRAM_BG1 = $0000
    sei ; disable interrupts
    clc ; carry clear
    xce ; swap carry and emulation bits
-   
+
+   jsr ClearVRAM
+   jsr CharLoad ; load character data to VRAM
+
+   ; enable non-maskable interrupt
+   lda #$81
+   sta NMITIMEN
+   jmp GameLoop
+.endproc
+
+.proc CharLoad
    setXY16 ; X needs to be 16-bit for VRAM DMA
    ldx #%10000000
    stx VMAIN
@@ -34,12 +46,39 @@ VRAM_BG1 = $0000
    sta DMAPx
    
    lda #1
-   sta MDMAEN
+   sta MDMAEN ; start transfer
 
-   ; enable non-maskable interrupt
-   lda #$81
-   sta NMITIMEN
-   jmp GameLoop
+   setXY8
+   rts
+.endproc
+
+.proc ClearVRAM
+   setXY16
+   ldx #0
+   stx ZERO
+
+   ldx #%10000000 ; vram auto increment
+   sta VMAIN
+
+   ldx #ZERO ; source address
+   stx A1TxL
+
+   stz A1Bx ; source bank
+
+   lda #$18 ; LSB of VMADDL address
+   sta BBADx
+
+   ldx #VRAM_SIZE ; copy bytes for the entire VRAM
+   stx DASxL
+   
+   lda #%00001001
+   sta DMAPx
+
+   lda #1
+   sta MDMAEN ; start transfer
+
+   setXY8
+   rts
 .endproc
 
 .proc GameLoop
