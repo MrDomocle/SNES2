@@ -7,8 +7,6 @@
 
 VRAM_CHARS = $0000
 VRAM_BG1 = $0000
-LOAD_INDEX_1 = $00
-LOAD_INDEX_2 = $02
 
 .segment "CODE"
 .proc ResetHandler
@@ -17,50 +15,27 @@ LOAD_INDEX_2 = $02
    clc ; carry clear
    xce ; swap carry and emulation bits
    
-   setXY16 ; X needs to be 16-bit to set the vram add address
-   ; load character data to VRAM
-   lda #$80
-   sta VMAIN ; set vram increment mode
-   ldx #VRAM_CHARS
-   stx VMADDL ; set vram load start address
-   setXY8 ; dont need that anymore
+   setXY16 ; X needs to be 16-bit for VRAM DMA
+   ldx #%10000000
+   stx VMAIN
 
-   ; loop
-   stz LOAD_INDEX_1 ; bp1
-   lda #8
-   sta LOAD_INDEX_2 ; bp2
+   ldx #charstart ; source address (16-bit)
+   stx A1TxL
 
-   ldy #0
-   @loop:
-      ldx LOAD_INDEX_1
-      lda charstart,x
-      sta VMDATAL
-      inx
-      stx LOAD_INDEX_1
+   stz A1Bx ; source bank is 0
+
+   lda #$18 ; LSB of VMADDL address
+   sta BBADx
+
+   ldx #(charend-charstart); number of bytes to copy
+   stx DASxL
+   
+   lda #%00000001 ; configure how DMA should be done. here: a-bus to b-bus, increment a address, 2 bytes (word) to 2 (VMADDL,H) registers
+   sta DMAPx
+   
+   lda #1
+   sta MDMAEN
       
-      ldx LOAD_INDEX_2
-      lda charstart,x
-      sta VMDATAH ; write to high increments vram address
-      inx
-      stx LOAD_INDEX_2
- 
-      iny
-      cpy #8 ; check if a character was loaded completely
-      bne @nojump
-      
-      ldy #0
-      lda LOAD_INDEX_1
-      adc #7
-      sta LOAD_INDEX_1
-
-      lda LOAD_INDEX_2
-      adc #8
-      sta LOAD_INDEX_2
- 
-      @nojump:
- 
-      cpx #(charend - charstart) ; compare x to number of bytes for chars
-      bne @loop
 
    ; enable non-maskable interrupt
    lda #$81
