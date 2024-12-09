@@ -4,6 +4,7 @@
 .include "snes.inc"
 .include "macros.inc"
 .include "charset.asm"
+.include "palette.asm"
 
 VRAM_CHARS = $0000
 VRAM_BG1 = $0000
@@ -18,10 +19,10 @@ CGRAM_SIZE = $0200
    clc ; carry clear
    xce ; swap carry and emulation bits
 
-   jsr ClearCGRAM
-   jsr SetPalette
    jsr ClearVRAM
    jsr CharLoad ; load character data to VRAM
+   jsr ClearCGRAM
+   jsr SetPalette
 
    lda #%00000001
    sta BGMODE
@@ -33,28 +34,15 @@ CGRAM_SIZE = $0200
 .endproc
 
 .proc CharLoad
-   setXY16 ; X needs to be 16-bit for VRAM DMA
-   ldx #%10000000
-   stx VMAIN
-
-   ldx #charstart ; source address (16-bit)
-   stx A1TxL
-
-   stz A1Bx ; source bank is 0
-
-   lda #$18 ; LSB of VMADDL address
-   sta BBADx
-
-   ldx #(charend-charstart); number of bytes to copy
-   stx DASxL
-   
-   lda #%00000001 ; configure how DMA should be done. here: a-bus to b-bus, increment a address, 2 bytes (word) to 2 (VMADDL,H) registers
-   sta DMAPx
-   
-   lda #1
-   sta MDMAEN ; start transfer
-
+   setXY16
+   lda #%10000000
+   sta VMAIN ; prepare VMDATAL to autoincrement
+   ldx #VRAM_CHARS
+   stx VMADDL ; set vm start address to character data
    setXY8
+
+   doDMA charstart,0,<VMDATAL,(charend-charstart),1 ; channel a_addr a_bank b_addr len control
+
    rts
 .endproc
 
@@ -62,38 +50,31 @@ CGRAM_SIZE = $0200
    setXY16
    ldx #0
    stx ZERO ; set up source to be zero
-
    ldx #%10000000 ; vram auto increment
    sta VMAIN
-
-   ldx #ZERO ; source address
-   stx A1TxL
-
-   stz A1Bx ; source bank
-
-   lda #$18 ; LSB of VMADDL address
-   sta BBADx
-
-   ldx #VRAM_SIZE ; copy bytes for the entire VRAM
-   stx DASxL
-   
-   lda #%00001001 ; the 1 in the middle makes it copy 1 address (ZERO) over and over
-   sta DMAPx
-
-   lda #1
-   sta MDMAEN ; start transfer
-
    setXY8
+   
+   doDMA ZERO,0,<VMDATAL,VRAM_SIZE,%00001001 ; DMA without incrementing A address (copy ZERO over and over)
+
    rts
 .endproc
 
 .proc SetPalette
    stz CGADD
-   lda #%01111100
-   sta CGDATA
-   stz CGDATA
+   ldx #0
+   @loop:
+      lda palettestart,x
+      sta CGDATA
+      inx
+      lda palettestart,x
+      sta CGDATA
+      inx
+
+      cpx #(paletteend-palettestart)
+      bne @loop
    rts
 .endproc
+
 .proc ClearCGRAM
    setXY16
    ldx #0
