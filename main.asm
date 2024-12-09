@@ -3,6 +3,7 @@
 
 .include "snes.inc"
 .include "macros.inc"
+.include "memio.asm"
 .include "charset.asm"
 .include "palette.asm"
 .include "objects.asm"
@@ -18,7 +19,9 @@ ZERO = $0069 ; address that will be set to 0 for vram/cgram clears
 VRAM_SIZE = $ffff ; size of vram in bytes
 CGRAM_SIZE = $0200 ; size of cgram in bytes
 OAM_SIZE = $0220 ; size of oam in bytes
+; WRAM addresses ("variables")
 nmi_count = $00
+move_down = $01
 
 .segment "CODE"
 .proc ResetHandler
@@ -36,10 +39,13 @@ nmi_count = $00
 
    lda #%00000001
    sta BGMODE
-   lda #%010
+   lda #0
+   sta OBSEL
 
    lda #%00010000
    sta TM
+   lda #%00000001
+   sta TS
 
    lda #$0f
    sta INIDISP
@@ -47,113 +53,42 @@ nmi_count = $00
    ; enable non-maskable interrupt
    lda #$81
    sta NMITIMEN
+
+   stz nmi_count
+   stz move_down
    jmp GameLoop
 .endproc
 
-.proc CharLoad
-   setXY16
-   lda #%10000000
-   sta VMAIN ; prepare VMDATAL to autoincrement
-   ldx #VRAM_CHARS
-   stx VMADDL ; set vm start address to character data
-   setXY8
-
-   doDMA charstart,0,<VMDATAL,(charend-charstart),1 ; a_addr a_bank b_addr len control
-   rts
-.endproc
-.proc SetPalette
-   stz CGADD
-   ldx #0
-   @loop: ; bg palettes
-      lda palettestart,x
-      sta CGDATA
-      inx
-      lda palettestart,x
-      sta CGDATA
-      inx
-
-      cpx #(paletteend-palettestart)
-      bne @loop
-   lda #$80
-   sta CGADD
-   ldx #0
-   @loop_obj: ; set object palettes
-      lda objpalletestart,x
-      sta CGDATA
-      inx
-      lda objpalletestart,x
-      sta CGDATA
-      inx
-
-      cpx #(objpaletteend-objpalletestart)
-      bne @loop_obj
-
-   rts
-.endproc
-.proc UpdateOAM ; loads oam buffer into actual oam
-   stz OAMADDL
-   stz OAMADDH
-
-   doDMA oam_lo,0,<OAMDATA,OAM_SIZE,0
-   rts
-.endproc
-.proc LoadOBJ ; loads object attributes from rom to oam buffer
-   setXY16
-   ldx #0
-   @loop:
-      lda objstart,x
-      sta oam_lo,x
-      inx
-      cpx #(objend-objstart)
-      bne @loop
-   setXY8
-   rts
-.endproc
-
-.proc ClearVRAM
-   setXY16
-   ldx #0
-   stx ZERO ; set up source to be zero
-   ldx #%10000000 ; vram auto increment
-   sta VMAIN
-   setXY8
-
-   doDMA ZERO,0,<VMDATAL,VRAM_SIZE,%00001001 ; DMA without incrementing A address (copy ZERO over and over)
-   rts
-.endproc
-.proc ClearCGRAM
-   setXY16
-   ldx #0
-   stx ZERO ; set up source to be zero
-   stz CGADD ; CGADD starts from 0
-   setXY8
-
-   doDMA ZERO,0,<CGDATA,CGRAM_SIZE,%00001010
-   rts
-.endproc
-.proc ClearOAM
-   setXY16
-   ldx #0
-   @loop:
-      stz oam_lo,x
-      inx
-      cpx #OAM_SIZE
-      bne @loop
-   setXY8
-   rts
-.endproc
-
 .proc GameLoop
-   stz nmi_count
    lda nmi_count
 @nmi_wait:
    wai
    cmp nmi_count
    beq @nmi_wait ; don't proceed until nmi_count changes
 
-   ; move sprite
-   inc oam_lo
-   inc oam_lo+1
+   ; check input
+   lda JOY1H
+   bit #$02 ; l
+   beq @not_l
+      dec oam_lo+ship+xc
+   @not_l:
+   bit #$01 ; r
+   beq @not_r
+      inc oam_lo+ship+xc
+   @not_r:
+   bit #$08 ; u
+   beq @not_u
+      dec oam_lo+ship+yc
+   @not_u:
+   bit #$04 ; d
+   beq @not_d
+      inc oam_lo+ship+yc
+   @not_d:
+
+   lda move_down
+   beq @not_move
+      inc oam_lo+ship+1
+   @not_move:
 
    jsr UpdateOAM ; update OAM every frame
 
@@ -161,8 +96,9 @@ nmi_count = $00
 .endproc
 
 .proc NMIHandler
-   lda RDNMI
+   pha
    inc nmi_count
+   pla
    rti ; return from interrupt
 .endproc
 
