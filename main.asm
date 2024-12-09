@@ -42,7 +42,6 @@ CGRAM_SIZE = $0200
    setXY8
 
    doDMA charstart,0,<VMDATAL,(charend-charstart),1 ; channel a_addr a_bank b_addr len control
-
    rts
 .endproc
 
@@ -53,9 +52,8 @@ CGRAM_SIZE = $0200
    ldx #%10000000 ; vram auto increment
    sta VMAIN
    setXY8
-   
-   doDMA ZERO,0,<VMDATAL,VRAM_SIZE,%00001001 ; DMA without incrementing A address (copy ZERO over and over)
 
+   doDMA ZERO,0,<VMDATAL,VRAM_SIZE,%00001001 ; DMA without incrementing A address (copy ZERO over and over)
    rts
 .endproc
 
@@ -79,27 +77,10 @@ CGRAM_SIZE = $0200
    setXY16
    ldx #0
    stx ZERO ; set up source to be zero
-
-   stz CGADD
-
-   ldx #ZERO ; source address
-   stx A1TxL
-
-   stz A1Bx ; source bank
-
-   lda #$22 ; LSB of CGADD address
-   sta BBADx
-
-   ldx #CGRAM_SIZE ; copy bytes for the entire VRAM
-   stx DASxL
-   
-   lda #%00001010 ; the 1 in the middle makes it copy 1 address (ZERO) over and over
-   sta DMAPx
-
-   lda #1
-   sta MDMAEN ; start transfer
-
+   stz CGADD ; CGADD starts from 0
    setXY8
+
+   doDMA ZERO,0,<CGDATA,CGRAM_SIZE,%00001010
    rts
 .endproc
 
