@@ -14,14 +14,14 @@
    stz CGADD
    ldx #0
    @loop: ; bg palettes
-      lda palettestart,x
+      lda chrpalettestart,x
       sta CGDATA
       inx
-      lda palettestart,x
+      lda chrpalettestart,x
       sta CGDATA
       inx
 
-      cpx #(paletteend-palettestart)
+      cpx #(chrpaletteend-chrpalettestart)
       bne @loop
    lda #$80
    sta CGADD

@@ -1,12 +1,12 @@
 .p816
 .smart
 
-.include "snes.inc"
-.include "macros.inc"
-.include "memio.asm"
-.include "charset.asm"
-.include "palette.asm"
-.include "objects.asm"
+.include "include/snes.inc"
+.include "include/macros.inc"
+.include "include/memio.asm"
+.include "gfx/charset.asm"
+.include "gfx/palette.asm"
+.include "gfx/objects.asm"
 
 .bss ; oam bss: 
    oam_lo: .res 512
