@@ -5,12 +5,14 @@
 .include "macros.inc"
 .include "charset.asm"
 .include "palette.asm"
+.include "objects.asm"
 
 VRAM_CHARS = $0000
 VRAM_BG1 = $0000
 ZERO = $0069
 VRAM_SIZE = $ffff
 CGRAM_SIZE = $0200
+OAM_SIZE = $0220
 
 .segment "CODE"
 .proc ResetHandler
@@ -26,6 +28,12 @@ CGRAM_SIZE = $0200
 
    lda #%00000001
    sta BGMODE
+
+   lda #%00010000
+   sta TM
+
+   lda #$0f
+   sta INIDISP
 
    ; enable non-maskable interrupt
    lda #$81
@@ -70,6 +78,20 @@ CGRAM_SIZE = $0200
 
       cpx #(paletteend-palettestart)
       bne @loop
+   lda #$80
+   sta CGADD
+   ldx #0
+   @loop_obj: ; set object palettes
+      lda objpalletestart,x
+      sta CGDATA
+      inx
+      lda objpalletestart,x
+      sta CGDATA
+      inx
+
+      cpx #(objpaletteend-objpalletestart)
+      bne @loop_obj
+
    rts
 .endproc
 
