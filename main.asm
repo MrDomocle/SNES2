@@ -8,7 +8,7 @@
 .include "gfx/palette.asm"
 .include "gfx/objects.asm"
 
-.bss ; oam bss: 
+.bss ; oam bss
    oam_lo: .res 512
    oam_hi: .res 32
 
