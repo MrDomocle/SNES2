@@ -39,7 +39,7 @@ move_down = $01
 
    lda #%00000001
    sta BGMODE
-   lda #0
+   lda #%00100000
    sta OBSEL
 
    lda #%00010000
