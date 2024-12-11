@@ -1,5 +1,7 @@
 import imageio.v3 as iio
 # Convert image to VRAM image
+# Doesn't do anything to the palette, just says what it is.
+# It's up to the artist to make sure the palette is correct
 
 im = iio.imread("gfx/bg.png")
 mode = "bg"
