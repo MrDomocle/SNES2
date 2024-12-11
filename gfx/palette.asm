@@ -1,13 +1,17 @@
 chrpalettestart:
-; colour 0: #0000
-.byte %00000000 ; low byte (gggrrrrr)
-.byte %00000000 ; high byte(-bbbbbgg)
-; colour 1: #7c1f (magenta)
-.byte %00011111 ; low byte
-.byte %01111100 ; high byte
-; colour 2: 03e0 (green)
-.byte %11100000 ; low
-.byte %00000011 ; high
+.word $0000 ; transparency
+.word %0110001011001100
+.word %0011111001101001
+.word %0001100001000001
+.word %0001010001000000
+.word %0010110100000000
+.word %0001100001000000
+.word %0101000111000000
+.word %0001010010000000
+.word %0101001100101110
+.word %0111111100000000
+.word %0111111111111111
+.word %0110111111010111
 chrpaletteend:
 
 objpalletestart:

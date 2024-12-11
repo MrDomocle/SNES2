@@ -16,7 +16,7 @@ bullet_first = 4*2
 .repeat 10
 .byte %00100000 ; xxxxxxxx
 .byte %11110111 ; yyyyyyyy
-.byte %00000100 ; tttttttt
+.byte %00100000 ; tttttttt
 .byte %00000000 ; vhppccct
 .endrepeat
 bullet_last = 4*13
