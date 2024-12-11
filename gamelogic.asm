@@ -1,4 +1,5 @@
-SHOT_INTERVAL = 60 ; frames of cooldown between shots
+SHOT_INTERVAL = 6 ; frames of cooldown between shots
+BULLET_SPEED = 3 ; speed of bullets in pixels per frame
 .segment "CODE"
 .proc UpdateCooldowns
    setAXY16
@@ -19,19 +20,27 @@ SHOT_INTERVAL = 60 ; frames of cooldown between shots
    lda joy1_buffer
    bit #$0200 ; left
    beq @not_l
+      setA8
       dec oam_lo+xc+ship
+      setA16
    @not_l:
    bit #$0100 ; right
    beq @not_r
+      setA8
       inc oam_lo+xc+ship
+      setA16
    @not_r:
    bit #$0800 ; up
    beq @not_u
+      setA8
       dec oam_lo+yc+ship
+      setA16
    @not_u:
    bit #$0400 ; down
    beq @not_d
+      setA8
       inc oam_lo+yc+ship
+      setA16
    @not_d:
 
    bit #$8000 ; b
@@ -67,10 +76,10 @@ SHOT_INTERVAL = 60 ; frames of cooldown between shots
       bra @apply
    @apply:
       lda oam_lo+xc+ship
-      adc #8
+      adc #3
       sta oam_lo+xc,x ; x as offset - to get to the bullet we chose
       lda oam_lo+yc+ship
-      sbc #8
+      sbc #5
       sta oam_lo+yc,x
    
    @return:
@@ -80,20 +89,31 @@ SHOT_INTERVAL = 60 ; frames of cooldown between shots
 .proc TickBullets
    setA8
    lda oam_lo+yc+bullet1
-   cmp #$f6 ; check if 1st bullet is active (yc is more than f6, so it's hidden)
+   cmp #$f6 ; check if 1st bullet is active (if yc is more than f6 it's hidden)
    bcs @b1_out
-      ; move bullet1 2 pixels up
-      dec oam_lo+yc+bullet1
-      dec oam_lo+yc+bullet1
-      dec oam_lo+yc+bullet1
+      ; move bullet1
+      lda oam_lo+yc+bullet1
+      sbc #BULLET_SPEED
+      bcc @b1_over ; return if y-coordinate overflew (end of screen)
+      sta oam_lo+yc+bullet1
    @b1_out:
    lda oam_lo+yc+bullet2
    cmp #$f6
    bcs @b2_out
-      dec oam_lo+yc+bullet2
-      dec oam_lo+yc+bullet2
-      dec oam_lo+yc+bullet2
+      lda oam_lo+yc+bullet2
+      sbc #BULLET_SPEED
+      bcc @b2_over
+      sta oam_lo+yc+bullet2
    @b2_out:
+      bra @return
+   @b1_over:
+      ldx #bullet1
+      jsr HideObject
+      bra @return
+   @b2_over:
+      ldx #bullet2
+      jsr HideObject
+      bra @return
    @return:
    rts
 .endproc

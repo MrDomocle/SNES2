@@ -93,7 +93,7 @@ joy1_buffer = $04 ; buffer for storing joypad data
 .proc NMIHandler
    setA16
    inc nmi_count
-   lda JOY1L
+   lda JOY1L ; load joypad register now because vblank starts soon
    sta joy1_buffer
    setA8
    rti ; return from interrupt
