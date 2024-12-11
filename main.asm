@@ -4,10 +4,10 @@
 .include "include/snes.inc"
 .include "include/macros.inc"
 .include "include/memio.asm"
-.include "gamelogic.asm"
 .include "gfx/charset.asm"
 .include "gfx/palette.asm"
 .include "gfx/objects.asm"
+.include "gamelogic.asm"
 
 .bss ; oam bss
    oam_lo: .res 512
@@ -25,6 +25,7 @@ OAM_SIZE = $0220 ; size of oam in bytes
 ; WRAM addresses ("variables")
 nmi_count = $00
 shot_cooldown = $02
+joy1_buffer = $04 ; buffer for storing joypad data
 
 .segment "CODE"
 .proc ResetHandler
@@ -33,18 +34,22 @@ shot_cooldown = $02
    clc ; carry clear
    xce ; swap carry and emulation bits
 
+   setAXY8 ; start in 8-bit mode
+
    jsr ClearVRAM
    jsr CharLoad ; load character data to VRAM
    jsr ClearCGRAM
    jsr SetPalette
    jsr ClearOAM
    jsr LoadOBJ
-
+   
+   ; set bg and obj modes
    lda #%00000001
    sta BGMODE
    lda #%00000000
    sta OBSEL ; sssnnbbb
-
+   
+   ; set main & subscreen designations
    lda #%00010000
    sta TM
    lda #%00000001
@@ -57,9 +62,11 @@ shot_cooldown = $02
    lda #$81
    sta NMITIMEN
    
+   ; initialise "variables"
    setA16
    stz nmi_count
    stz shot_cooldown
+   stz joy1_buffer
    setA8
    
    jmp GameLoop
@@ -71,38 +78,12 @@ shot_cooldown = $02
    wai
    cmp nmi_count
    beq @nmi_wait ; don't proceed until nmi_count changes
-   ; update cooldowns
-   setA16
-   lda #0
-   cmp shot_cooldown
-   beq @shot_ready
-      dec shot_cooldown
-   @shot_ready:
-   setA8
+   
+   jsr UpdateCooldowns
 
-   ; check input
-   lda JOY1H
-   bit #$02 ; left
-   beq @not_l
-      dec oam_lo+ship+xc
-   @not_l:
-   bit #$01 ; right
-   beq @not_r
-      inc oam_lo+ship+xc
-   @not_r:
-   bit #$08 ; up
-   beq @not_u
-      dec oam_lo+ship+yc
-   @not_u:
-   bit #$04 ; down
-   beq @not_d
-      inc oam_lo+ship+yc
-   @not_d:
-   lda JOY1L
-   bit #$80 ; a
-   beq @not_a
-      jsr ShootBullet
-   @not_a:
+   jsr ReadInput
+
+   jsr TickBullets
 
    jsr UpdateOAM ; update OAM every frame
 
@@ -110,9 +91,11 @@ shot_cooldown = $02
 .endproc
 
 .proc NMIHandler
-   setAXY16
+   setA16
    inc nmi_count
-   setAXY8
+   lda JOY1L
+   sta joy1_buffer
+   setA8
    rti ; return from interrupt
 .endproc
 
