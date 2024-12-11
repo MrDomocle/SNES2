@@ -1,7 +1,8 @@
 import imageio.v3 as iio
 # Convert image to VRAM image
 
-im = iio.imread("gfx/img.png")
+im = iio.imread("gfx/bg.png")
+mode = "bg"
 f = open("gfx/buffer.txt", "w")
 pal = ["transparent"]
 indexed = []
@@ -40,7 +41,7 @@ for y in range(0,im.shape[0]-7,8):
                 for i in range(len(n),4):
                     n = "0" + n
                 arr[row].append(n)
-                            
+        f.writelines(f"; {x//8},{y//8}----------------\n")
         for r in arr:
             for bp in range(0,2):
                 row = ".byte %"
@@ -54,7 +55,9 @@ for y in range(0,im.shape[0]-7,8):
                     row += c[3-bp]
                 f.writelines(row + "\n") 
     # skip to next VRAM row
-    f.writelines(f".res 8*4*(16-{im.shape[1]//8})" + "\n")
+    f.writelines(f";=====================ROW END==================\n")
+    f.writelines(f".res 8*4*(16-{im.shape[1]//8})\n")
+        
 
 f.writelines(f"Palette: {len(pal)} colours" + "\n")
 f.writelines(".word $0000 ; transparency" + "\n") # colour 0 always transparent

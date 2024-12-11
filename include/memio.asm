@@ -10,6 +10,17 @@
    doDMA charstart,0,<VMDATAL,(charend-charstart),1 ; a_addr a_bank b_addr len control
    rts
 .endproc
+.proc MapLoad
+   setXY16
+   lda #%10000000
+   sta VMAIN
+   ldx #VRAM_BG1
+   stx VMADDL
+   setXY8
+
+   doDMA mapstart,0,<VMDATAL,(mapend-mapstart),1
+   rts
+.endproc
 .proc SetPalette
    stz CGADD
    ldx #0

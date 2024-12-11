@@ -7,6 +7,7 @@
 .include "gfx/charset.asm"
 .include "gfx/palette.asm"
 .include "gfx/objects.asm"
+.include "gfx/tilemap.asm"
 .include "gamelogic.asm"
 
 .bss ; oam bss
@@ -16,9 +17,10 @@
 
 .zeropage
 VRAM_CHARS = $0000 ; vram offset of bg characters
-VRAM_BG1 = $0000 ; vram offset of tilemap
+VRAM_BG1 = $1000 ; vram offset of BG1 tilemap
+VRAM_BG1SC = %00010000
 ZERO = $0069 ; address that will be set to 0 for vram/cgram clears
-VRAM_SIZE = $ffff ; size of vram in bytes
+VRAM_SIZE = $7fff ; size of vram in bytes
 CGRAM_SIZE = $0200 ; size of cgram in bytes
 OAM_SIZE = $0220 ; size of oam in bytes
 
@@ -42,17 +44,21 @@ joy1_buffer = $04 ; buffer for storing joypad data
    jsr SetPalette
    jsr ClearOAM
    jsr LoadOBJ
+   jsr MapLoad
    
    ; set bg and obj modes
    lda #%00000001
    sta BGMODE
    lda #%00000000
    sta OBSEL ; sssnnbbb
+   ; set tilemap address
+   lda #VRAM_BG1SC
+   sta BG1SC
    
    ; set main & subscreen designations
-   lda #%00010000
+   lda #%00010001
    sta TM
-   lda #%00000001
+   lda #%00010000
    sta TS
 
    lda #$0f
