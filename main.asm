@@ -4,6 +4,7 @@
 .include "include/snes.inc"
 .include "include/macros.inc"
 .include "include/memio.asm"
+.include "gamelogic.asm"
 .include "gfx/charset.asm"
 .include "gfx/palette.asm"
 .include "gfx/objects.asm"
@@ -11,6 +12,7 @@
 .bss ; oam bss
    oam_lo: .res 512
    oam_hi: .res 32
+   oam_end:
 
 .zeropage
 VRAM_CHARS = $0000 ; vram offset of bg characters
@@ -19,9 +21,10 @@ ZERO = $0069 ; address that will be set to 0 for vram/cgram clears
 VRAM_SIZE = $ffff ; size of vram in bytes
 CGRAM_SIZE = $0200 ; size of cgram in bytes
 OAM_SIZE = $0220 ; size of oam in bytes
+
 ; WRAM addresses ("variables")
 nmi_count = $00
-move_down = $01
+shot_cooldown = $02
 
 .segment "CODE"
 .proc ResetHandler
@@ -39,8 +42,8 @@ move_down = $01
 
    lda #%00000001
    sta BGMODE
-   lda #%00100000
-   sta OBSEL
+   lda #%00000000
+   sta OBSEL ; sssnnbbb
 
    lda #%00010000
    sta TM
@@ -53,9 +56,12 @@ move_down = $01
    ; enable non-maskable interrupt
    lda #$81
    sta NMITIMEN
-
+   
+   setA16
    stz nmi_count
-   stz move_down
+   stz shot_cooldown
+   setA8
+   
    jmp GameLoop
 .endproc
 
@@ -65,30 +71,38 @@ move_down = $01
    wai
    cmp nmi_count
    beq @nmi_wait ; don't proceed until nmi_count changes
+   ; update cooldowns
+   setA16
+   lda #0
+   cmp shot_cooldown
+   beq @shot_ready
+      dec shot_cooldown
+   @shot_ready:
+   setA8
 
    ; check input
    lda JOY1H
-   bit #$02 ; l
+   bit #$02 ; left
    beq @not_l
       dec oam_lo+ship+xc
    @not_l:
-   bit #$01 ; r
+   bit #$01 ; right
    beq @not_r
       inc oam_lo+ship+xc
    @not_r:
-   bit #$08 ; u
+   bit #$08 ; up
    beq @not_u
       dec oam_lo+ship+yc
    @not_u:
-   bit #$04 ; d
+   bit #$04 ; down
    beq @not_d
       inc oam_lo+ship+yc
    @not_d:
-
-   lda move_down
-   beq @not_move
-      inc oam_lo+ship+1
-   @not_move:
+   lda JOY1L
+   bit #$80 ; a
+   beq @not_a
+      jsr ShootBullet
+   @not_a:
 
    jsr UpdateOAM ; update OAM every frame
 
@@ -96,9 +110,9 @@ move_down = $01
 .endproc
 
 .proc NMIHandler
-   pha
+   setAXY16
    inc nmi_count
-   pla
+   setAXY8
    rti ; return from interrupt
 .endproc
 

@@ -88,14 +88,23 @@
    doDMA ZERO,0,<CGDATA,CGRAM_SIZE,%00001010
    rts
 .endproc
-.proc ClearOAM
+.proc ClearOAM ; this is a special case as we need to hide all unused sprites
    setXY16
    ldx #0
+   lda #$f0 ; y position to keep sprite offscreen
    @loop:
       stz oam_lo,x
       inx
-      cpx #OAM_SIZE
+      sta oam_lo,x ; sta to make y position ff
+      inx
+      cpx #(oam_hi-oam_lo)
       bne @loop
-   setXY8
+   
+   ldx #0
+   @loop1: ; only stz to oam_hi
+      stz oam_hi,x ; sta to make y position ff
+      inx
+      cpx #(oam_end-oam_hi)
+      bne @loop1
    rts
 .endproc
