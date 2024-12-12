@@ -33,9 +33,28 @@ for row in im:
             indexed[i].append(0)
     i += 1
 f.writelines(".segment \"CODE\"\nmapstart:\n")
+blank_line = False
+blank_count = 0
+last = 0
 for row in range(0,len(indexed)):
     for tile in range (0,len(indexed[row])):
-        f.writelines(f".word t{indexed[row][tile]}\n")
+        if blank_line:
+            if indexed[row][tile] != 0: # end of blank line
+                f.writelines(f".repeat {blank_count}\n.word t0\n.endrepeat\n")
+                blank_line = False
+            elif last == 0: # inside blank line
+                blank_count += 1
+            if row == len(indexed)-1 and tile == len(indexed[row])-1: # last tile - write what we have
+                f.writelines(f".repeat {blank_count}\n.word t0\n.endrepeat\n")
+                blank_line = False
+
+        elif indexed[row][tile] == 0: # start of blank line
+            blank_line = True
+            blank_count = 1
+        
+        if not blank_line: # not blank
+            f.writelines(f".word t{indexed[row][tile]}\n")
+        last = indexed[row][tile]
 
 f.writelines("mapend:\n")
 for i in range(0,len(pal)):

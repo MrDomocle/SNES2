@@ -18,16 +18,16 @@
 VRAM_CHARS = $0000 ; vram offset of bg characters
 VRAM_BG1 = $1000 ; vram offset of BG1 tilemap
 VRAM_BG1SC = %00010000
-ZERO = $0069 ; address that will be set to 0 for vram/cgram clears
 VRAM_SIZE = $ffff ; size of vram in bytes
 CGRAM_SIZE = $0200 ; size of cgram in bytes
 OAM_SIZE = $0220 ; size of oam in bytes
 
 ; WRAM addresses ("variables")
+ZERO = $0069 ; address that will be set to 0 for vram/cgram clears
 nmi_count = $00 ; word
 shot_cooldown = $02 ; word
-joy1_buffer = $04 ; word. buffer for storing joypad data
-screen_vscroll = $06 ; word
+joy1_buffer = $04 ; word, buffer for storing joypad data
+screen_vscroll = $06 ; word, buffer for BG1VOFS (makes code for scrolling simpler)
 
 .segment "CODE"
 .proc ResetHandler
@@ -68,8 +68,8 @@ screen_vscroll = $06 ; word
    lda #$81
    sta NMITIMEN
    
-   ; initialise "variables"
    setA16
+   stz ZERO
    stz nmi_count
    stz shot_cooldown
    stz joy1_buffer
