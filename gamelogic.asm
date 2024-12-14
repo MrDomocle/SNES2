@@ -1,5 +1,6 @@
 SHOT_INTERVAL = 6 ; frames of cooldown between shots
 BULLET_SPEED = 3 ; speed of bullets in pixels per frame
+ENEMY_HSPEED = 2 ; speed of enemies moving horizontally
 SHIP_BOUND_Y_HI = $cf
 SHIP_BOUND_Y_LO = $20
 SHIP_BOUND_X_HI = $f0
@@ -143,6 +144,33 @@ SHIP_BOUND_X_LO = $00
          inx
       .endrepeat
       cpx #bullet_last
+      bne @loop
+   @return:
+   rts
+.endproc
+.proc TickEnemy
+   setA8
+   ldx #enemy_first
+   ldy #0
+   @loop:
+      lda amogus_directions,y
+      bit #1 ; left
+      beq @left
+      @right:
+         lda oam_lo+xc,x
+         adc #ENEMY_HSPEED
+         sta oam_lo+xc,x
+         bra @continue
+      @left:
+      lda oam_lo+xc,x
+      sbc #ENEMY_HSPEED
+      sta oam_lo+xc,x
+      @continue:
+      .repeat 4
+         inx
+      .endrepeat
+      iny
+      cpx #enemy_last
       bne @loop
    @return:
    rts

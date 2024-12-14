@@ -1,3 +1,5 @@
+ENEMY_POOL_SIZE = 11
+BULLET_POOL_SIZE = 9
 xc=0 ; x byte offset
 yc=1 ; y byte offset
 objlostart:
@@ -6,22 +8,29 @@ ship = 4*0 ; offset in oam_lo
 .byte %00100000 ; yyyyyyyy
 .byte %00000000 ; tttttttt
 .byte %00110000 ; vhppccct
-enemy = 4*1
+; enemy pool
+enemy_first = 4*1
+.repeat ENEMY_POOL_SIZE
 .byte %00100000 ; xxxxxxxx
 .byte %00100000 ; yyyyyyyy
 .byte %00000010 ; tttttttt
-.byte %00010000 ; vhppccct
+.byte %00100000 ; vhppccct
+.endrepeat
+enemy_last = enemy_first+4*ENEMY_POOL_SIZE
 ; bullet pool
-bullet_first = 4*2
-.repeat 10
+bullet_first = enemy_last
+.repeat BULLET_POOL_SIZE
 .byte %00100000 ; xxxxxxxx
 .byte %11110111 ; yyyyyyyy
 .byte %00100000 ; tttttttt
-.byte %00000000 ; vhppccct
+.byte %00100000 ; vhppccct
 .endrepeat
-bullet_last = 4*13
+bullet_last = bullet_first+4*BULLET_POOL_SIZE
 objloend:
 
 objhistart:
-.byte %00001010 ; sxsxsxsx - obj 0-3
+.byte %10101010 ; sxsxsxsx - obj 0-3
+.repeat (ENEMY_POOL_SIZE-3)/4
+   .byte %10101010
+.endrepeat
 objhiend:

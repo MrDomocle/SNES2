@@ -17,7 +17,7 @@
 .zeropage
 VRAM_CHARS = $0000 ; vram offset of bg characters
 VRAM_BG1 = $1000 ; vram offset of BG1 tilemap
-VRAM_BG1SC = %00010000
+VRAM_BG1SC = %00010000 ; tilemap settings, including 6-bit address
 VRAM_SIZE = $ffff ; size of vram in bytes
 CGRAM_SIZE = $0200 ; size of cgram in bytes
 OAM_SIZE = $0220 ; size of oam in bytes
@@ -28,6 +28,7 @@ nmi_count = $00 ; word
 shot_cooldown = $02 ; word
 joy1_buffer = $04 ; word, buffer for storing joypad data
 screen_vscroll = $06 ; word, buffer for BG1VOFS (makes code for scrolling simpler)
+amogus_directions = $08 ; array of bytes
 
 .segment "CODE"
 .proc ResetHandler
@@ -75,7 +76,7 @@ screen_vscroll = $06 ; word, buffer for BG1VOFS (makes code for scrolling simple
    stz joy1_buffer
    stz screen_vscroll
    setA8
-   
+
    jmp GameLoop
 .endproc
 
@@ -88,8 +89,8 @@ screen_vscroll = $06 ; word, buffer for BG1VOFS (makes code for scrolling simple
 
    ; scroll screen
    setA16
-   inc screen_vscroll
-   inc screen_vscroll
+   dec screen_vscroll
+   dec screen_vscroll
    setA8
    lda screen_vscroll ; LSB
    sta BG1VOFS
@@ -99,6 +100,8 @@ screen_vscroll = $06 ; word, buffer for BG1VOFS (makes code for scrolling simple
    jsr UpdateCooldowns
    jsr ReadInput
    jsr TickBullets
+   jsr TickEnemy
+   
    jsr UpdateOAM ; update OAM every frame
 
    jmp GameLoop
