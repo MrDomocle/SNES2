@@ -1,11 +1,12 @@
-ENEMY_POOL_SIZE = 11
+ENEMY_POOL_SIZE = 7 ; ENEMY_POOL_SIZE-3 must be divisible by 4
 BULLET_POOL_SIZE = 9
 xc=0 ; x byte offset
 yc=1 ; y byte offset
+tile_addr=2 ; tile address byte offset
 objlostart:
 ship = 4*0 ; offset in oam_lo
-.byte %00100000 ; xxxxxxxx
-.byte %00100000 ; yyyyyyyy
+.byte %10000000 ; xxxxxxxx
+.byte %10110000 ; yyyyyyyy
 .byte %00000000 ; tttttttt
 .byte %00110000 ; vhppccct
 ; enemy pool
@@ -21,7 +22,7 @@ enemy_last = enemy_first+4*ENEMY_POOL_SIZE
 bullet_first = enemy_last
 .repeat BULLET_POOL_SIZE
 .byte %00100000 ; xxxxxxxx
-.byte %11110111 ; yyyyyyyy
+.byte %11110000 ; yyyyyyyy
 .byte %00100000 ; tttttttt
 .byte %00100000 ; vhppccct
 .endrepeat

@@ -25,10 +25,18 @@ OAM_SIZE = $0220 ; size of oam in bytes
 ; WRAM addresses ("variables")
 ZERO = $0069 ; address that will be set to 0 for vram/cgram clears
 nmi_count = $00 ; word
-shot_cooldown = $02 ; word
 joy1_buffer = $04 ; word, buffer for storing joypad data
 screen_vscroll = $06 ; word, buffer for BG1VOFS (makes code for scrolling simpler)
-amogus_directions = $08 ; array of bytes
+random_word = $08 ; random number address. leave uninitialised for a random seed on emulators that set memory to random at startup
+
+shot_cooldown = $02 ; word
+
+amogus_timers = $20 ; array of bytes
+amogus_directions = $40 ; array of bytes 
+
+explosion_number = $60 ; byte
+explosion_objs = $61 ; array of bytes
+explosion_timers = $80 ; array of bytes
 
 .segment "CODE"
 .proc ResetHandler
@@ -46,6 +54,7 @@ amogus_directions = $08 ; array of bytes
    jsr ClearOAM
    jsr LoadOBJ
    jsr MapLoad
+   jsr RandomiseEnemyPositions
    
    ; set bg and obj modes
    lda #%00000001
@@ -69,6 +78,7 @@ amogus_directions = $08 ; array of bytes
    lda #$81
    sta NMITIMEN
    
+   ; clear vars
    setA16
    stz ZERO
    stz nmi_count
@@ -76,6 +86,13 @@ amogus_directions = $08 ; array of bytes
    stz joy1_buffer
    stz screen_vscroll
    setA8
+   ldx #0
+   @enemy_clear_loop:
+      stz amogus_directions,x
+      stz amogus_timers,x
+      cpx ENEMY_POOL_SIZE
+      bne @enemy_clear_loop
+   ldx #0
 
    jmp GameLoop
 .endproc
@@ -100,7 +117,9 @@ amogus_directions = $08 ; array of bytes
    jsr UpdateCooldowns
    jsr ReadInput
    jsr TickBullets
+   jsr HandleCollisions
    jsr TickEnemy
+   ;jsr TickExplosions
    
    jsr UpdateOAM ; update OAM every frame
 
