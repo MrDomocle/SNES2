@@ -1,4 +1,4 @@
-ENEMY_POOL_SIZE = 7 ; ENEMY_POOL_SIZE-3 must be divisible by 4
+ENEMY_POOL_SIZE = 15 ; ENEMY_POOL_SIZE-3 must be divisible by 4
 BULLET_POOL_SIZE = 9
 HIDDEN_Y = $f0
 xc=0 ; x byte offset
@@ -11,7 +11,7 @@ ship = 4*0 ; offset in oam_lo
 .byte %00000000 ; tttttttt
 .byte %00110000 ; vhppccct
 ; enemy pool
-enemy_first = 4*1
+enemy_first = ship+4
 .repeat ENEMY_POOL_SIZE
 .byte %00100000 ; xxxxxxxx
 .byte %00100000 ; yyyyyyyy

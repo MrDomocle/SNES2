@@ -7,9 +7,12 @@ SHIP_BOUND_Y_LO = $20
 SHIP_BOUND_X_HI = $f0
 SHIP_BOUND_X_LO = $00
 HIT_RANGE = 16
-EXPLODE_TIME = 30
-EXPLODE_DISABLED_TIME = $ff ; set to explode time when there isn't an explosion in that slot
+EXPLODE_TIME = 8
+EXPLODE_DISABLED_STAGE = $ff ; set to explode stage when there isn't an explosion in that slot
 MAX_EXPLOSIONS = 16
+EXPLODE_TILE_1 = $04
+EXPLODE_TILE_2 = $06
+ENEMY_TILE = $02
 .segment "CODE"
 .proc UpdateCooldowns
    setAXY16
@@ -137,8 +140,8 @@ MAX_EXPLOSIONS = 16
       cmp #HIDDEN_Y ; skip if enemy is offscreen
       beq @continue
       lda oam_lo+tile_addr,x
-      cmp #$04 ; skip if enemy is exploding
-      beq @continue
+      cmp #ENEMY_TILE ; skip if enemy is exploding (not ENEMY_TILE)
+      bne @continue
       ldy #bullet_first
       @loop_b: ; each bullet
          lda oam_lo+yc,y
@@ -286,17 +289,31 @@ MAX_EXPLOSIONS = 16
 .proc TickExplosions
    ldx #0
    @loop:
-      lda explosion_timers,x
-      cmp #EXPLODE_DISABLED_TIME
+      lda explosion_stages,x
+      cmp #EXPLODE_DISABLED_STAGE
       beq @continue
+         lda explosion_timers,x
          cmp #0
-         beq @stop_explosion
+         beq @time_up
             dec explosion_timers,x
             bra @continue
-         @stop_explosion:
-         ; disable explosion
-         lda #EXPLODE_DISABLED_TIME
-         sta explosion_timers,x
+         @time_up:
+         ; go to next stage or disable explosion
+         lda explosion_stages,x
+         cmp #1 ; last stage index
+         beq @disable_explosion
+            ; update tile
+            ldy explosion_objs,x
+            lda #EXPLODE_TILE_2
+            sta oam_lo+tile_addr,y
+            ; increment stage, reset timer
+            inc explosion_stages,x
+            lda #EXPLODE_TIME
+            sta explosion_timers,x
+            bra @continue
+         @disable_explosion:
+         lda #EXPLODE_DISABLED_STAGE
+         sta explosion_stages,x
          ; hide explosion
          phx
          lda explosion_objs,x
@@ -312,15 +329,17 @@ MAX_EXPLOSIONS = 16
 .endproc
 
 .proc Explode ; load obj's offset to X before call
-   lda #$04 ; explosion tile address
+   lda #EXPLODE_TILE_1
    sta oam_lo+tile_addr,x
    ; set up explosion data
-   ; go up the explosion list until we find an EXPLODE_DISABLED_TIME and put the explosion there
+   ; go up the explosion list until we find an EXPLODE_DISABLED_STAGE and put the explosion there
    ldy #0
    @loop:
-      lda explosion_timers,y
-      cmp #EXPLODE_DISABLED_TIME
+      lda explosion_stages,y
+      cmp #EXPLODE_DISABLED_STAGE
       bne @continue ; go to next if not disabled
+         lda #0
+         sta explosion_stages,y
          lda #EXPLODE_TIME
          sta explosion_timers,y
          stx explosion_objs,y ; exploding object's offset is in X

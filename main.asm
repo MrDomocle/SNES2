@@ -23,7 +23,7 @@ CGRAM_SIZE = $0200 ; size of cgram in bytes
 OAM_SIZE = $0220 ; size of oam in bytes
 
 ; WRAM addresses ("variables")
-ZERO = $0069 ; address that will be set to 0 for vram/cgram clears
+ZERO = $120 ; address that will be set to 0 for vram/cgram clears
 nmi_count = $00 ; word
 joy1_buffer = $04 ; word, buffer for storing joypad data
 screen_vscroll = $06 ; word, buffer for BG1VOFS (makes code for scrolling simpler)
@@ -91,12 +91,13 @@ explosion_stages = $100 ; array of bytes
    @enemy_clear_loop:
       stz amogus_directions,x
       stz amogus_timers,x
-      cpx ENEMY_POOL_SIZE
+      inx
+      cpx #ENEMY_POOL_SIZE
       bne @enemy_clear_loop
    ldx #0
    @explosion_clear_loop:
-      lda #EXPLODE_DISABLED_TIME
-      sta explosion_timers,x
+      lda #EXPLODE_DISABLED_STAGE
+      sta explosion_stages,x
       inx
       cpx #MAX_EXPLOSIONS
       bne @explosion_clear_loop
