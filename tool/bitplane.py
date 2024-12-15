@@ -80,8 +80,6 @@ for i in range(1,len(pal)):
     gs = bin(g)[2:]
     bs = bin(b)[2:]
 
-    #print(rs,gs,bs)
-
     for j in range(len(rs),5):
         rs = "0"+rs
     for j in range(len(gs),5):
@@ -91,5 +89,5 @@ for i in range(1,len(pal)):
 
     col = ".word %0"+bs+gs+rs
     
-    f.writelines(col + "\n")
+    f.writelines(f"{col} ; #{pal[i]}\n")
 f.close()
