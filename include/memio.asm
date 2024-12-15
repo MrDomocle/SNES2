@@ -10,11 +10,11 @@
    doDMA charstart,0,<VMDATAL,(charend-charstart),1 ; a_addr a_bank b_addr len control
    rts
 .endproc
-.proc MapLoad
+.proc BG2Load
    setXY16
    lda #%10000000
    sta VMAIN
-   ldx #VRAM_BG1
+   ldx #VRAM_BG2
    stx VMADDL
    setXY8
 
@@ -34,10 +34,25 @@
 
       cpx #(chrpaletteend-chrpalettestart)
       bne @loop
+   
+   lda #$10
+   sta CGADD
+   ldx #0
+   @loop_title: ; title palettes
+      lda titlepalettestart,x
+      sta CGDATA
+      inx
+      lda titlepalettestart,x
+      sta CGDATA
+      inx
+
+      cpx #(titlepaletteend-titlepalettestart)
+      bne @loop_title
+   
    lda #$80
    sta CGADD
    ldx #0
-   @loop_obj: ; set object palettes
+   @loop_obj: ; obj palettes
       lda objpalletestart,x
       sta CGDATA
       inx

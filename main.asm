@@ -8,6 +8,9 @@
 .include "gfx/palette.asm"
 .include "gfx/objects.asm"
 .include "gfx/tilemap.asm"
+.include "title/charmap.inc"
+.include "title/titles.asm"
+.include "title/textdisplay.asm"
 .include "gamelogic.asm"
 
 .bss
@@ -16,14 +19,17 @@
    oam_end:
 .zeropage
 VRAM_CHARS = $0000 ; vram offset of bg characters
-VRAM_BG1 = $1000 ; vram offset of BG1 tilemap
+VRAM_BG1 = $1000 ; vram offset of tilemap 
+VRAM_BG2 = $2000 
 VRAM_BG1SC = %00010000 ; tilemap settings, including 6-bit address
+VRAM_BG2SC = %00100000 
+VRAM_LETTER_START = $7e ; in tilemap address format
 VRAM_SIZE = $ffff ; size of vram in bytes
 CGRAM_SIZE = $0200 ; size of cgram in bytes
 OAM_SIZE = $0220 ; size of oam in bytes
+TILEMAP_SIZE = 32*32*2 ; size of a 32x32 tilemap in bytes
 
 ; WRAM addresses ("variables")
-ZERO = $120 ; address that will be set to 0 for vram/cgram clears
 nmi_count = $00 ; word
 joy1_buffer = $04 ; word, buffer for storing joypad data
 screen_vscroll = $06 ; word, buffer for BG1VOFS (makes code for scrolling simpler)
@@ -39,6 +45,10 @@ explosion_objs = $60 ; array of bytes
 explosion_timers = $80 ; array of bytes
 explosion_stages = $100 ; array of bytes
 
+ZERO = $110 ; address that will be set to 0 for vram/cgram clears
+
+title_text = $120 ; array of words
+
 .segment "CODE"
 .proc ResetHandler
    ; init dance
@@ -47,6 +57,8 @@ explosion_stages = $100 ; array of bytes
    xce ; swap carry and emulation bits
 
    setAXY8 ; start in 8-bit mode
+   stz random_word
+   stz random_word+1
 
    jsr ClearVRAM
    jsr CharLoad ; load character data to VRAM
@@ -54,7 +66,9 @@ explosion_stages = $100 ; array of bytes
    jsr SetPalette
    jsr ClearOAM
    jsr LoadOBJ
-   jsr MapLoad
+   jsr ClearText
+   jsr DrawTitle
+   jsr BG2Load
    jsr RandomiseEnemyPositions
    
    ; set bg and obj modes
@@ -65,11 +79,13 @@ explosion_stages = $100 ; array of bytes
    ; set tilemap address
    lda #VRAM_BG1SC
    sta BG1SC
+   lda #VRAM_BG2SC
+   sta BG2SC
    
    ; set main & subscreen designations
-   lda #%00010001
+   lda #%00010011
    sta TM
-   lda #%00010000
+   lda #%00000010
    sta TS
 
    lda #$0f
@@ -122,9 +138,9 @@ explosion_stages = $100 ; array of bytes
    dec screen_vscroll
    setA8
    lda screen_vscroll ; LSB
-   sta BG1VOFS
+   sta BG2VOFS
    lda screen_vscroll+1 ; MSB
-   sta BG1VOFS
+   sta BG2VOFS
    
    jsr UpdateCooldowns
    jsr ReadInput
