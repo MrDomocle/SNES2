@@ -31,12 +31,13 @@ random_word = $08 ; random number address. leave uninitialised for a random seed
 
 shot_cooldown = $02 ; word
 
+amogus_count = $1f ; byte
 amogus_timers = $20 ; array of bytes
 amogus_directions = $40 ; array of bytes 
 
-explosion_number = $60 ; byte
-explosion_objs = $61 ; array of bytes
+explosion_objs = $60 ; array of bytes
 explosion_timers = $80 ; array of bytes
+explosion_stages = $100 ; array of bytes
 
 .segment "CODE"
 .proc ResetHandler
@@ -93,6 +94,16 @@ explosion_timers = $80 ; array of bytes
       cpx ENEMY_POOL_SIZE
       bne @enemy_clear_loop
    ldx #0
+   @explosion_clear_loop:
+      lda #EXPLODE_DISABLED_TIME
+      sta explosion_timers,x
+      inx
+      cpx #MAX_EXPLOSIONS
+      bne @explosion_clear_loop
+   lda #ENEMY_POOL_SIZE
+   sta amogus_count
+
+   ldx #0
 
    jmp GameLoop
 .endproc
@@ -119,10 +130,8 @@ explosion_timers = $80 ; array of bytes
    jsr TickBullets
    jsr HandleCollisions
    jsr TickEnemy
-   ;jsr TickExplosions
+   jsr TickExplosions
    
-   jsr UpdateOAM ; update OAM every frame
-
    jmp GameLoop
 .endproc
 
@@ -132,6 +141,10 @@ explosion_timers = $80 ; array of bytes
    lda JOY1L ; load joypad register now because vblank starts soon
    sta joy1_buffer
    setA8
+   ; OAM needs to be updated first (which essentially delays sprite updates by 1 frame)
+   ; This is because sometimes logic takes long enough to miss the time when you can still
+   ; write to PPU registers, so sprites disappear for that frame (e.g. when I do an explosion)
+   jsr UpdateOAM
    rti ; return from interrupt
 .endproc
 

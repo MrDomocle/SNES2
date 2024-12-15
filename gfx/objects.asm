@@ -1,5 +1,6 @@
 ENEMY_POOL_SIZE = 7 ; ENEMY_POOL_SIZE-3 must be divisible by 4
 BULLET_POOL_SIZE = 9
+HIDDEN_Y = $f0
 xc=0 ; x byte offset
 yc=1 ; y byte offset
 tile_addr=2 ; tile address byte offset
@@ -22,7 +23,7 @@ enemy_last = enemy_first+4*ENEMY_POOL_SIZE
 bullet_first = enemy_last
 .repeat BULLET_POOL_SIZE
 .byte %00100000 ; xxxxxxxx
-.byte %11110000 ; yyyyyyyy
+.byte HIDDEN_Y ; yyyyyyyy
 .byte %00100000 ; tttttttt
 .byte %00100000 ; vhppccct
 .endrepeat

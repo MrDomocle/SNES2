@@ -8,8 +8,8 @@ SHIP_BOUND_X_HI = $f0
 SHIP_BOUND_X_LO = $00
 HIT_RANGE = 16
 EXPLODE_TIME = 30
-HIDDEN_Y = $f0
-.smart
+EXPLODE_DISABLED_TIME = $ff ; set to explode time when there isn't an explosion in that slot
+MAX_EXPLOSIONS = 16
 .segment "CODE"
 .proc UpdateCooldowns
    setAXY16
@@ -132,12 +132,15 @@ HIDDEN_Y = $f0
 .proc HandleCollisions
    setAXY8
    ldx #enemy_first
-   @loop:
+   @loop: ; each enemy
       lda oam_lo+yc,x
-      cmp #HIDDEN_Y
+      cmp #HIDDEN_Y ; skip if enemy is offscreen
+      beq @continue
+      lda oam_lo+tile_addr,x
+      cmp #$04 ; skip if enemy is exploding
       beq @continue
       ldy #bullet_first
-      @loop_b:
+      @loop_b: ; each bullet
          lda oam_lo+yc,y
          cmp #HIDDEN_Y ; skip hidden
          beq @continue_b
@@ -148,6 +151,7 @@ HIDDEN_Y = $f0
                sbc oam_lo+xc,x
                cmp #HIT_RANGE ; compare to enemy x
                bcs @continue_b
+                  dec amogus_count
                   phy
                   jsr Explode ; hide enemy in x
                   ply
@@ -280,17 +284,52 @@ HIDDEN_Y = $f0
    rts
 .endproc
 .proc TickExplosions
-   
+   ldx #0
+   @loop:
+      lda explosion_timers,x
+      cmp #EXPLODE_DISABLED_TIME
+      beq @continue
+         cmp #0
+         beq @stop_explosion
+            dec explosion_timers,x
+            bra @continue
+         @stop_explosion:
+         ; disable explosion
+         lda #EXPLODE_DISABLED_TIME
+         sta explosion_timers,x
+         ; hide explosion
+         phx
+         lda explosion_objs,x
+         tax
+         jsr HideObject
+         plx
+      @continue:
+      inx
+      cpx #MAX_EXPLOSIONS
+      bne @loop
+
+      rts
 .endproc
+
 .proc Explode ; load obj's offset to X before call
    lda #$04 ; explosion tile address
    sta oam_lo+tile_addr,x
    ; set up explosion data
-   ldy explosion_number ; use as index in explosion arrays
-   inc explosion_number
-   lda #EXPLODE_TIME
-   sta explosion_timers,y
-   stx explosion_objs,y
+   ; go up the explosion list until we find an EXPLODE_DISABLED_TIME and put the explosion there
+   ldy #0
+   @loop:
+      lda explosion_timers,y
+      cmp #EXPLODE_DISABLED_TIME
+      bne @continue ; go to next if not disabled
+         lda #EXPLODE_TIME
+         sta explosion_timers,y
+         stx explosion_objs,y ; exploding object's offset is in X
+         bra @break
+      @continue:
+      iny
+      cpy #MAX_EXPLOSIONS
+      bne @loop
+      @break:
 
    rts
 .endproc
