@@ -108,8 +108,14 @@
    setA16
    lda screen_vscroll_speed
    cmp screen_vscroll_speed_target
-   bcs @accel_done
-      adc #SCROLL_ACCEL
+   bcs @accel_speed_gr
+      ; if speed less
+      adc screen_vscroll_accel
+      sta screen_vscroll_speed
+      bra @accel_done
+   @accel_speed_gr:
+      ; if speed more
+      sbc screen_vscroll_accel
       sta screen_vscroll_speed
    @accel_done:
    ; set scroll

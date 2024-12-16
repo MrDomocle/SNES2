@@ -32,13 +32,18 @@ TILEMAP_SIZE = 32*32*2 ; size of a 32x32 tilemap in bytes
 
 ; WRAM addresses ("variables")
 nmi_count = $00 ; word
-shot_cooldown = $02 ; word
-joy1_buffer = $04 ; word, buffer for storing joypad data
-screen_vscroll = $06 ; word, buffer for BG2VOFS with subpixels (16 subpixels in pixel)
-screen_vscroll_speed = $08 ; word, speed of scroll in subpixels/frame
-screen_vscroll_speed_target = $10 ; word, target for scroll speed acceleration
-random_word = $12 ; random number address. leave uninitialised for a random seed on emulators that set memory to random at startup
-title_timer = $14 ; byte
+game_state = $02 ; byte
+shot_cooldown = $04 ; word
+joy1_buffer_last = $06 ; joy1_buffer of the last frame
+joy1_buffer = $08 ; word, buffer for storing joypad data
+joy1_up = $0a ; mask for buttons that were released
+joy1_down = $0c ; mask for buttons that were pressed
+screen_vscroll = $0e ; word, buffer for BG2VOFS with subpixels (16 subpixels in pixel)
+screen_vscroll_speed = $10 ; word, speed of scroll in subpixels/frame
+screen_vscroll_speed_target = $12 ; word, target for scroll speed acceleration
+screen_vscroll_accel = $14 ; word
+random_word = $1c ; rng outputs here
+title_timer = $1e ; byte
 amogus_count = $1f ; byte
 amogus_timers = $20 ; array of bytes
 amogus_directions = $40 ; array of bytes 
@@ -81,7 +86,7 @@ title_text = $120 ; array of words
    jsr ClearText
    jsr DrawTitle
    jsr BG2Load
-   jsr RandomiseEnemyPositions
+   jsr UpdateOAM
    
    ; set main & subscreen designations
    lda #%00010011
@@ -106,6 +111,8 @@ title_text = $120 ; array of words
    lda #SCROLL_SPEED_LO
    sta screen_vscroll_speed
    sta screen_vscroll_speed_target
+   lda #SCROLL_ACCEL_LO
+   sta screen_vscroll_accel
 
    lda #$ffff
    sta screen_vscroll
@@ -128,6 +135,8 @@ title_text = $120 ; array of words
    sta amogus_count
    lda #TITLE_TIME
    sta title_timer
+   
+   stz game_state ; 0 title 1 game
 
    ldx #0
 
@@ -145,25 +154,45 @@ title_text = $120 ; array of words
    jsr ScrollBG
    
    jsr UpdateCooldowns
-   jsr ReadInput
-   jsr TickBullets
-   jsr HandleCollisions
-   jsr TickEnemy
-   jsr TickExplosions
+   lda game_state
+   beq @title
+      jsr ReadInput
+      jsr TickBullets
+      jsr HandleCollisions
+      jsr TickEnemy
+      jsr TickExplosions
+   @title:
    
    jmp GameLoop
 .endproc
 
 .proc NMIHandler
-   setA16
+   setAXY16
    inc nmi_count
+
+   lda joy1_buffer
+   sta joy1_buffer_last
+
    lda JOY1L ; load joypad register now because vblank starts soon
    sta joy1_buffer
-   setA8
+
+   eor joy1_buffer_last
+   tax
+   and joy1_buffer_last
+   sta joy1_up
+   txa
+   and joy1_buffer
+   sta joy1_down
+   
+   
+   setAXY8
    ; OAM needs to be updated first (which essentially delays sprite updates by 1 frame)
    ; This is because sometimes logic takes long enough to miss the time when you can still
    ; write to PPU registers, so sprites disappear for that frame (e.g. when I do an explosion)
-   jsr UpdateOAM
+   lda game_state
+   beq @title
+      jsr UpdateOAM
+   @title:
    rti ; return from interrupt
 .endproc
 

@@ -14,7 +14,7 @@ ship = 4*0 ; offset in oam_lo
 enemy_first = ship+4
 .repeat ENEMY_POOL_SIZE
 .byte %00100000 ; xxxxxxxx
-.byte %00100000 ; yyyyyyyy
+.byte HIDDEN_Y ; yyyyyyyy
 .byte %00000010 ; tttttttt
 .byte %00100000 ; vhppccct
 .endrepeat

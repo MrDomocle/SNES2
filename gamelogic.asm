@@ -14,10 +14,11 @@ EXPLODE_TILE_1 = $04
 EXPLODE_TILE_2 = $06
 ENEMY_TILE = $02
 TITLE_TIME = 240 ; time for title to stay in frames
-SCROLL_ACCEL = 8
+SCROLL_ACCEL_LO = 24 ; title -> game
+SCROLL_ACCEL_HI = 32 ; a button
 SCROLL_SPEED_LO = 64 ; shown during title
-SCROLL_SPEED_MI = 768 ; shown normally
-SCROLL_SPEED_HI = 2048 ; speedup (not implemented yet)
+SCROLL_SPEED_MI = 1024 ; shown normally
+SCROLL_SPEED_HI = 3400 ; speedup
 .segment "CODE"
 .proc UpdateCooldowns
    setAXY16
@@ -31,13 +32,18 @@ SCROLL_SPEED_HI = 2048 ; speedup (not implemented yet)
       dec title_timer
       bra @title_done
    @title_ready:
-      setA16
-      lda #SCROLL_SPEED_MI
-      cmp screen_vscroll_speed_target
+      setA8
+      lda #1
+      cmp game_state
       beq @title_done
+         setA16
+         lda #SCROLL_SPEED_MI
          sta screen_vscroll_speed_target
          setA8
+         lda #1
+         sta game_state
          jsr ClearText
+         jsr RandomiseEnemyPositions
    @title_done:
 
    @return:
@@ -48,6 +54,8 @@ SCROLL_SPEED_HI = 2048 ; speedup (not implemented yet)
 .proc ReadInput
    setAXY16
    ; check input
+
+   ; holding - check buffer
    lda joy1_buffer
    bit #$0200 ; left
    beq @not_l
@@ -74,6 +82,29 @@ SCROLL_SPEED_HI = 2048 ; speedup (not implemented yet)
    beq @not_b
       jsr ShootBullet
    @not_b:
+   
+   ; up/down - check masks
+   lda joy1_down
+   bit #$0080 ; a
+   beq @not_a_down
+      setXY16
+      ldx #SCROLL_SPEED_HI
+      stx screen_vscroll_speed_target
+      ldx #SCROLL_ACCEL_HI
+      stx screen_vscroll_accel
+      setXY8
+   @not_a_down:
+
+   lda joy1_up
+   bit #$0080
+   beq @not_a_up
+      setXY16
+      ldx #SCROLL_SPEED_MI
+      stx screen_vscroll_speed_target
+      ldx #SCROLL_ACCEL_LO
+      stx screen_vscroll_accel
+      setXY8
+   @not_a_up:
 
    @return:
    setA8
@@ -280,7 +311,7 @@ SCROLL_SPEED_HI = 2048 ; speedup (not implemented yet)
       ; y coordinate: use high byte, crop some bits
       lda random_word+1
       and #$2f
-      adc oam_lo+yc,x
+      adc #$20
       sta oam_lo+yc,x
       
       .repeat 4
