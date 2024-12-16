@@ -17,6 +17,9 @@ chrpaletteend:
 titlepalettestart:
 .word $0000 ; transparency
 .word %0111111111111111 ; #ffffff
+.res 28
+.word $0000
+.word %0111001110011100 ;
 titlepaletteend:
 
 objpalletestart:

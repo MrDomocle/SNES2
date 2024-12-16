@@ -13,14 +13,32 @@ MAX_EXPLOSIONS = 16
 EXPLODE_TILE_1 = $04
 EXPLODE_TILE_2 = $06
 ENEMY_TILE = $02
+TITLE_TIME = 240 ; time for title to stay in frames
+SCROLL_ACCEL = 8
+SCROLL_SPEED_LO = 64 ; shown during title
+SCROLL_SPEED_MI = 768 ; shown normally
+SCROLL_SPEED_HI = 2048 ; speedup (not implemented yet)
 .segment "CODE"
 .proc UpdateCooldowns
    setAXY16
-   ldx #0
-   cpx shot_cooldown
+   lda shot_cooldown
    beq @shot_ready
       dec shot_cooldown
    @shot_ready:
+   setA8
+   lda title_timer
+   beq @title_ready
+      dec title_timer
+      bra @title_done
+   @title_ready:
+      setA16
+      lda #SCROLL_SPEED_MI
+      cmp screen_vscroll_speed_target
+      beq @title_done
+         sta screen_vscroll_speed_target
+         setA8
+         jsr ClearText
+   @title_done:
 
    @return:
    setAXY8

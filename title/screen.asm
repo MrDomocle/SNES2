@@ -3,17 +3,24 @@
    ldx #0
    ldy #0
    @loop:
-      lda #$04
-      sta title_text,x
-      inx
       lda label,y
-      sta title_text,x
-      inx
       cmp #NULL
       beq @break
-      iny
-      bra @loop
+         adc #VRAM_LETTER_START
+         sta title_text,x
+         inx
+         lda #$04
+         sta title_text,x
+         inx
+         lda label,y
+         
+         iny
+         bra @loop
       @break:
+      sta title_text,x
+      inx
+      lda #$04
+      sta title_text,x
 .endmacro
 .proc DrawTitle
    jsr DrawTitleMain
@@ -27,7 +34,7 @@
    ; load title
    LoadText title_main
    ; draw title
-   ldy #(32*14+2)
+   ldy title_main_ofs
    jsr DrawText
    setXY8
    rts
@@ -38,7 +45,7 @@
    ; load title
    LoadText title_credits
    ; draw title
-   ldy #(32*18)
+   ldy title_credits_ofs
    jsr DrawText
    setXY8
    rts
@@ -49,13 +56,18 @@
    ; load title
    LoadText title_credits1
    ; draw title
-   ldy #(32*20+1)
+   ldy title_credits1_ofs
    jsr DrawText
    setXY8
    rts
 .endproc
+
 .proc DrawText ; load tilemap start offset in (16-bit) Y
-   setAXY16
+   setXY16
+   ; set VMAIN
+   lda #%10000000
+   sta VMAIN
+   setA16
    ; set VMADD to the correct offset
    lda #VRAM_BG1
    @loop_add:
@@ -67,11 +79,11 @@
    ldx #0
    @loop:
       lda title_text,x
-      cmp #$0004
+      cmp #$0400
       beq @break
-         ; apply VRAM address offset and store in VRAM
-         adc #VRAM_LETTER_START
+         ; store in VRAM
          sta VMDATAL
+      inx
       inx
       bra @loop
       @break:
@@ -88,5 +100,24 @@
    setXY8
 
    doDMA empty_tile,0,<VMDATAL,TILEMAP_SIZE,%00001001 ; DMA without incrementing A address (copy empty_tile over and over)
+   rts
+.endproc
+
+.proc ScrollBG
+   ; acceleration
+   setA16
+   lda screen_vscroll_speed
+   cmp screen_vscroll_speed_target
+   bcs @accel_done
+      adc #SCROLL_ACCEL
+      sta screen_vscroll_speed
+   @accel_done:
+   ; set scroll
+   lda screen_vscroll
+   sbc screen_vscroll_speed
+   sta screen_vscroll
+   setA8
+   lda screen_vscroll+1 ; MSB
+   sta BG2VOFS
    rts
 .endproc
