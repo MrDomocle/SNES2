@@ -15,18 +15,19 @@ EXPLODE_TILE_2 = $06
 ENEMY_TILE = $02
 TITLE_TIME = 240 ; time for title to stay in frames
 SCROLL_ACCEL_LO = 24 ; title -> game
-SCROLL_ACCEL_HI = 32 ; a button
+SCROLL_ACCEL_HI = 48 ; a button
 SCROLL_SPEED_LO = 64 ; shown during title
 SCROLL_SPEED_MI = 1024 ; shown normally
 SCROLL_SPEED_HI = 3400 ; speedup
 .segment "CODE"
 .proc UpdateCooldowns
-   setAXY16
+   setXY16
+   setA8
    lda shot_cooldown
    beq @shot_ready
       dec shot_cooldown
    @shot_ready:
-   setA8
+
    lda title_timer
    beq @title_ready
       dec title_timer
@@ -45,6 +46,14 @@ SCROLL_SPEED_HI = 3400 ; speedup
          jsr ClearText
          jsr RandomiseEnemyPositions
    @title_done:
+   lda amogus_timer
+   beq @reset_amogus
+      dec amogus_timer
+      bra @done_amogus
+   @reset_amogus:
+   lda #ENEMY_DIR_CHANGE_INTERVAL
+   sta amogus_timer
+   @done_amogus:
 
    @return:
    setAXY8
@@ -113,11 +122,11 @@ SCROLL_SPEED_HI = 3400 ; speedup
 .proc ShootBullet
    setA8
    setXY16
-   ldx #0
-   cpx shot_cooldown
+   lda #0
+   cpa shot_cooldown
    bne @return ; return if nmi_count is less
-      ldx #SHOT_INTERVAL
-      stx shot_cooldown ; reset cooldown
+      lda #SHOT_INTERVAL
+      sta shot_cooldown ; reset cooldown
    
    ldx #bullet_first
    @loop:
@@ -258,11 +267,9 @@ SCROLL_SPEED_HI = 3400 ; speedup
       lda oam_lo+yc,x
       cmp #HIDDEN_Y
       beq @continue ; skip if this one is offscreen
-      lda amogus_timers,y
+      lda amogus_timer
       beq @rng ; if timer 0, change direction to whatever tickRNG says
          ; otherwise, continue moving in the same direction
-         dec
-         sta amogus_timers,y
          lda amogus_directions,y
          beq @right ; right if dir is 0
             @left:
@@ -276,8 +283,6 @@ SCROLL_SPEED_HI = 3400 ; speedup
             sta oam_lo+xc,x
             bra @continue
       @rng:
-      lda #ENEMY_DIR_CHANGE_INTERVAL
-      sta amogus_timers,y
       jsr TickRNG
       lda random_word ; loads low byte
       bit #1 ; check if even

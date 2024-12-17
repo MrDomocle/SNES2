@@ -45,7 +45,7 @@ screen_vscroll_accel = $14 ; word
 random_word = $1c ; rng outputs here
 title_timer = $1e ; byte
 amogus_count = $1f ; byte
-amogus_timers = $20 ; array of bytes
+amogus_timer = $2f ; byte
 amogus_directions = $40 ; array of bytes 
 explosion_objs = $60 ; array of bytes
 explosion_timers = $80 ; array of bytes
@@ -117,10 +117,10 @@ title_text = $120 ; array of words
    lda #$ffff
    sta screen_vscroll
    setA8
+   stz amogus_timer
    ldx #0
    @enemy_clear_loop:
       stz amogus_directions,x
-      stz amogus_timers,x
       inx
       cpx #ENEMY_POOL_SIZE
       bne @enemy_clear_loop
