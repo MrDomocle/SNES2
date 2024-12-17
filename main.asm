@@ -8,9 +8,10 @@
 .include "gfx/palette.asm"
 .include "gfx/objects.asm"
 .include "gfx/tilemap.asm"
-.include "title/charmap.inc"
-.include "title/titles.asm"
-.include "title/screen.asm"
+.include "gfx/charmap.inc"
+.include "draw/titles.asm"
+.include "draw/screen.asm"
+.include "draw/hdma.asm"
 .include "gamelogic.asm"
 
 .bss
@@ -161,6 +162,7 @@ title_text = $120 ; array of words
       jsr HandleCollisions
       jsr TickEnemy
       jsr TickExplosions
+      jsr WarpScreen
    @title:
    
    jmp GameLoop
@@ -193,6 +195,7 @@ title_text = $120 ; array of words
    beq @title
       jsr UpdateOAM
    @title:
+   
    rti ; return from interrupt
 .endproc
 
