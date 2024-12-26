@@ -195,6 +195,27 @@ SCROLL_SPEED_HI = 3400 ; speedup
 .endproc
 .proc HandleCollisions
    setAXY8
+   ldx #enemy_bullet_first
+   @loop_e:
+      lda oam_lo+yc,x
+      sbc oam_lo+yc+ship ; check if bullet matches ship y
+      cmp #HIT_RANGE
+      bcs @continue_e
+         lda oam_lo+xc,x
+         sbc oam_lo+xc+ship ; check if bullet matches ship x
+         cmp #HIT_RANGE
+         bcs @continue_e
+            ldx #ship ; explode ship if so
+            jsr Explode
+            bra @break_e
+      @continue_e:
+      .repeat 4
+         inx
+      .endrepeat
+      cpx #enemy_bullet_last
+      bne @loop_e
+   @break_e:
+
    ldx #enemy_first
    @loop: ; each enemy
       lda oam_lo+yc,x

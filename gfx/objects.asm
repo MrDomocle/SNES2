@@ -1,6 +1,6 @@
 ENEMY_POOL_SIZE = 15 ; ENEMY_POOL_SIZE-3 must be divisible by 4
 BULLET_POOL_SIZE = 9
-ENEMY_BULLET_POOL_SIZE = 15
+ENEMY_BULLET_POOL_SIZE = 8 ; maximum enemy bullets on screen
 HIDDEN_Y = $f0
 OFFSCREEN_Y = $e0
 xc=0 ; x byte offset

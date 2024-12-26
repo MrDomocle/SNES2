@@ -35,7 +35,11 @@
       ; update shooting
       lda amogus_shot_timers,y
       bne @no_shot ; branch if timer didnt run out yet
-         jsr TickRNG
+         @rng_rep:
+            jsr TickRNG
+            lda random_word
+            cmp #$80
+            bcc @rng_rep ; keep regenerating until a value more than $80 is found
          lda random_word
          sta amogus_shot_timers,y
          phy
