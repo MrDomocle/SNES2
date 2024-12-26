@@ -11,7 +11,6 @@
 .include "gfx/charmap.inc"
 .include "draw/titles.asm"
 .include "draw/screen.asm"
-.include "draw/hdma.asm"
 .include "gamelogic.asm"
 
 .bss
@@ -162,7 +161,6 @@ title_text = $120 ; array of words
       jsr HandleCollisions
       jsr TickEnemy
       jsr TickExplosions
-      jsr WarpScreen
    @title:
    
    jmp GameLoop

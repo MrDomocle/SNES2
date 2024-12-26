@@ -2,6 +2,7 @@ SHOT_INTERVAL = 6 ; frames of cooldown between shots
 BULLET_SPEED = 3 ; speed of bullets in pixels per frame
 ENEMY_HSPEED = 1 ; speed of enemies moving horizontally
 ENEMY_DIR_CHANGE_INTERVAL = 128 ; frames between randomising direction of amogi
+ENEMY_SHOOT_INTERVAL = 128 ; frames between enemy shots
 SHIP_BOUND_Y_HI = $cf
 SHIP_BOUND_Y_LO = $20
 SHIP_BOUND_X_HI = $f0

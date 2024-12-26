@@ -6,8 +6,8 @@ yc=1 ; y byte offset
 tile_addr=2 ; tile address byte offset
 objlostart:
 ship = 4*0 ; offset in oam_lo
-.byte %10000000 ; xxxxxxxx
-.byte %10110000 ; yyyyyyyy
+.byte %01110100 ; xxxxxxxx
+.byte %10000011 ; yyyyyyyy
 .byte %00000000 ; tttttttt
 .byte %00110000 ; vhppccct
 ; enemy pool

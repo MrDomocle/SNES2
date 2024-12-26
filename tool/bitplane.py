@@ -3,9 +3,9 @@ import imageio.v3 as iio
 # Doesn't do anything to the palette, just says what it is.
 # It's up to the artist to make sure the palette is correct
 
-im = iio.imread("gfx/letter.png")
-mode = "letter"
-f = open("gfx/buffer_letter.txt", "w")
+im = iio.imread("gfx/src/obj.png")
+mode = "obj"
+f = open("gfx/buffer_obj.txt", "w")
 pal = ["transparent"]
 indexed = []
 

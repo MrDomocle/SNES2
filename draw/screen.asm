@@ -128,23 +128,3 @@
    stz BG2VOFS
    rts
 .endproc
-
-.proc WarpScreen
-   setXY16
-   setA8
-   lda #%00000010
-   sta DMAPx;+$10
-
-   lda #$0f ; BG2HOFS
-   sta BBADx;+$10
-
-   ldx #warphdmastart
-   stx A1TxL;+$10
-   lda ^warphdmastart
-   sta A1Bx;+$10
-
-   lda #%00000001
-   sta HDMAEN
-   
-   rts
-.endproc
