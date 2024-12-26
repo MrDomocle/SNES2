@@ -17,10 +17,12 @@ ENEMY_TILE = $02
 TITLE_TIME = 240 ; time for title to stay in frames
 SCROLL_ACCEL_LO = 12 ; game -> game over
 SCROLL_ACCEL_MID = 24 ; title -> game
-SCROLL_ACCEL_HI = 48 ; a button
+SCROLL_ACCEL_HI = 48 ; A press
 SCROLL_SPEED_LO = 64 ; shown during titles
 SCROLL_SPEED_MI = 1024 ; shown normally
 SCROLL_SPEED_HI = 3400 ; speedup
+MOSAIC_MASK_TITLE = 1
+MOSAIC_MASK_GAME_OVER = 2
 .segment "CODE"
 ; MARK: CD & CONTROL
 .proc UpdateCooldowns
@@ -30,6 +32,16 @@ SCROLL_SPEED_HI = 3400 ; speedup
    beq @shot_ready
       dec shot_cooldown
    @shot_ready:
+   
+   lda mosaic_stage
+   cmp #0 ; check if transition active
+   beq @mosaic_ready
+   cmp #$0f ; check if not last stage
+   bcs @mosaic_ready
+      inc mosaic_stage
+      jsr MosaicDissolveUpdate
+      bra @mosaic_ready
+   @mosaic_ready:
 
    lda title_timer
    beq @title_ready
@@ -37,16 +49,16 @@ SCROLL_SPEED_HI = 3400 ; speedup
       bra @title_done
    @title_ready:
       setA8
-      lda #0
-      cmp game_state
+      lda game_state
+      cmp #0
       bne @title_done
+         jsr MosaicDissolve
          setA16
          lda #SCROLL_SPEED_MI
          sta screen_vscroll_speed_target
          setA8
          lda #1
          sta game_state
-         jsr ClearText
          jsr RandomiseEnemyPositions
    @title_done:
    lda amogus_timer
@@ -216,10 +228,13 @@ SCROLL_SPEED_HI = 3400 ; speedup
             ldx #SCROLL_ACCEL_LO
             stx screen_vscroll_accel
             setXY8
+            jsr DrawTitleGameOver
             ldx #ship
             jsr Explode
-
-            jsr DrawTitleGameOver
+            jsr HideEnemies
+            lda #MOSAIC_MASK_GAME_OVER
+            sta mosaic_mask
+            jsr MosaicDissolve
             bra @break_e
       @continue_e:
       .repeat 4
@@ -278,7 +293,7 @@ SCROLL_SPEED_HI = 3400 ; speedup
    ldx #bullet_first
    @loop: ; iterate through every bullet and tick it if it's on screen
       lda oam_lo+yc,x
-      cmp #(HIDDEN_Y-1)
+      cmp #HIDDEN_Y
       bcs @continue ; skip this bullet if it's offscreen (register > #$f6)
 
       sbc #BULLET_SPEED

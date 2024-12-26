@@ -134,3 +134,16 @@
    @break:
    rts
 .endproc
+.proc HideEnemies
+   ldx #enemy_first
+   @loop:
+      lda #HIDDEN_Y
+      sta oam_lo+yc,x
+      @continue:
+      .repeat 4
+         inx
+      .endrepeat
+      cpx #enemy_last
+      bne @loop
+   rts
+.endproc

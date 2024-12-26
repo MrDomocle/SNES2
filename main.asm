@@ -46,7 +46,9 @@ screen_vscroll_accel = screen_vscroll_speed_target+2 ; word
 
 random_word = screen_vscroll_accel+2 ; word, rng outputs here
 title_timer = random_word+2 ; byte
-amogus_timer = title_timer+1 ; byte
+mosaic_stage = title_timer+1 ; byte
+mosaic_mask = mosaic_stage+1 ; byte
+amogus_timer = mosaic_mask+1 ; byte
 amogus_directions = amogus_timer+1 ; array of bytes
 amogus_shot_timers = amogus_directions+ENEMY_POOL_SIZE ; array of bytes
 
@@ -121,6 +123,9 @@ title_text = $120 ; array of words
    sta screen_vscroll
    setA8
    stz amogus_timer
+   stz mosaic_stage
+   lda #MOSAIC_MASK_TITLE
+   sta mosaic_mask
    ldx #0
    @enemy_clear_loop:
       stz amogus_directions,x

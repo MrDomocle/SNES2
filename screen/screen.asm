@@ -62,6 +62,7 @@
    setXY8
    rts
 .endproc
+
 ; MARK: GAME OVER
 .proc DrawTitleGameOver
    setXY16
@@ -137,5 +138,30 @@
    lda screen_vscroll+1 ; MSB
    sta BG2VOFS
    stz BG2VOFS
+   rts
+.endproc
+.proc MosaicDissolve
+   lda #1
+   sta mosaic_stage
+   jsr MosaicDissolveUpdate
+   rts
+.endproc
+.proc MosaicDissolveUpdate
+   lda mosaic_stage
+   .repeat 4
+      asl ; shift stage 4 bits left for MOSAIC register format
+   .endrepeat
+   adc mosaic_mask ; set lowest 2 bits to activate bg1/2 mosaic
+   sta MOSAIC
+   ; check for last stage on title
+   lda mosaic_mask
+   cmp #1
+   bne @return
+      lda mosaic_stage
+      cmp #$0f
+      bcc @return
+         stz MOSAIC
+         jsr ClearText
+   @return:
    rts
 .endproc
