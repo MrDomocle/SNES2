@@ -1,5 +1,6 @@
 ENEMY_POOL_SIZE = 15 ; ENEMY_POOL_SIZE-3 must be divisible by 4
 BULLET_POOL_SIZE = 9
+ENEMY_BULLET_POOL_SIZE = 30
 HIDDEN_Y = $f0
 xc=0 ; x byte offset
 yc=1 ; y byte offset
@@ -28,6 +29,14 @@ bullet_first = enemy_last
 .byte %00100000 ; vhppccct
 .endrepeat
 bullet_last = bullet_first+4*BULLET_POOL_SIZE
+enemy_bullet_first = bullet_last
+.repeat ENEMY_BULLET_POOL_SIZE
+.byte %00100000 ; xxxxxxxx
+.byte HIDDEN_Y ; yyyyyyyy
+.byte %00100001 ; tttttttt
+.byte %00100000 ; vhppccct
+.endrepeat
+enemy_bullet_last = enemy_bullet_first+4*ENEMY_BULLET_POOL_SIZE
 objloend:
 
 objhistart:

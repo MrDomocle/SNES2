@@ -2,7 +2,6 @@ SHOT_INTERVAL = 6 ; frames of cooldown between shots
 BULLET_SPEED = 3 ; speed of bullets in pixels per frame
 ENEMY_HSPEED = 1 ; speed of enemies moving horizontally
 ENEMY_DIR_CHANGE_INTERVAL = 128 ; frames between randomising direction of amogi
-ENEMY_SHOOT_INTERVAL = 128 ; frames between enemy shots
 SHIP_BOUND_Y_HI = $cf
 SHIP_BOUND_Y_LO = $20
 SHIP_BOUND_X_HI = $f0
@@ -21,6 +20,7 @@ SCROLL_SPEED_LO = 64 ; shown during title
 SCROLL_SPEED_MI = 1024 ; shown normally
 SCROLL_SPEED_HI = 3400 ; speedup
 .segment "CODE"
+; MARK: CD & CONTROL
 .proc UpdateCooldowns
    setXY16
    setA8
@@ -120,6 +120,7 @@ SCROLL_SPEED_HI = 3400 ; speedup
    setA8
    rts
 .endproc
+; MARK: SHIP LOGIC
 .proc ShootBullet
    setA8
    setXY16
@@ -236,6 +237,7 @@ SCROLL_SPEED_HI = 3400 ; speedup
    @return:
    rts
 .endproc
+; MARK: TICK
 .proc TickBullets
    setAXY8
    ldx #bullet_first
@@ -260,6 +262,30 @@ SCROLL_SPEED_HI = 3400 ; speedup
    @return:
    rts
 .endproc
+.proc TickEnemyBullets
+   setAXY8
+   ldx #enemy_bullet_first
+   @loop: ; iterate through every bullet and tick it if it's on screen
+      lda oam_lo+yc,x
+      cmp #(HIDDEN_Y-1)
+      bcs @continue ; skip this bullet if it's offscreen (register > #$f6)
+
+      adc #BULLET_SPEED
+      bcs @not_over
+         jsr HideObject ; hide if yc overflows
+         bra @continue
+      @not_over:
+      sta oam_lo+yc,x
+      
+      @continue:
+      .repeat 4
+         inx
+      .endrepeat
+      cpx #enemy_bullet_last
+      bne @loop
+   @return:
+   rts
+.endproc
 .proc TickEnemy
    setAXY8
    ldx #enemy_first
@@ -268,8 +294,9 @@ SCROLL_SPEED_HI = 3400 ; speedup
       lda oam_lo+yc,x
       cmp #HIDDEN_Y
       beq @continue ; skip if this one is offscreen
+
       lda amogus_timer
-      beq @rng ; if timer 0, change direction to whatever tickRNG says
+      beq @dir_change ; if timer 0, change direction to whatever tickRNG says
          ; otherwise, continue moving in the same direction
          lda amogus_directions,y
          beq @right ; right if dir is 0
@@ -283,19 +310,51 @@ SCROLL_SPEED_HI = 3400 ; speedup
             adc #ENEMY_HSPEED
             sta oam_lo+xc,x
             bra @continue
-      @rng:
+      @dir_change:
       jsr TickRNG
       lda random_word ; loads low byte
       bit #1 ; check if even
       bne @odd
-         @even:
+      @even:
             lda #1
             sta amogus_directions,y
-            bra @continue
+            bra @dir_done
       @odd:
          lda #0
          sta amogus_directions,y
-         bra @continue
+         bra @dir_done
+
+      @dir_done:
+      lda random_word+1 ; high byte
+      and #8 ; 1/16th chance (if my rng is right)
+      beq @shot_done
+         phx
+         phy
+         ldx #enemy_bullet_first
+         @enemy_bullet_loop:
+            lda oam_lo+yc,x
+            cmp #HIDDEN_Y
+            beq @enemy_bullet_continue
+               txy ; store bullet offset in y
+               plx ; pull enemy offset to x
+               lda oam_lo+xc,x ; enemy x
+               sta oam_lo+xc,y ; bullet x
+               lda oam_lo+yc,x
+               sta oam_lo+yc,y
+               ; revert index changes
+               phx
+               tyx
+               bra @enemy_bullet_break
+            @enemy_bullet_continue:
+            .repeat 4
+               inx
+            .endrepeat
+            cpx #enemy_bullet_last
+            bne @enemy_bullet_loop 
+         @enemy_bullet_break:
+         plx
+         ply
+      @shot_done:
       @continue:
       .repeat 4
          inx
