@@ -15,9 +15,10 @@ EXPLODE_TILE_1 = $04
 EXPLODE_TILE_2 = $06
 ENEMY_TILE = $02
 TITLE_TIME = 240 ; time for title to stay in frames
-SCROLL_ACCEL_LO = 24 ; title -> game
+SCROLL_ACCEL_LO = 12 ; game -> game over
+SCROLL_ACCEL_MID = 24 ; title -> game
 SCROLL_ACCEL_HI = 48 ; a button
-SCROLL_SPEED_LO = 64 ; shown during title
+SCROLL_SPEED_LO = 64 ; shown during titles
 SCROLL_SPEED_MI = 1024 ; shown normally
 SCROLL_SPEED_HI = 3400 ; speedup
 .segment "CODE"
@@ -36,9 +37,9 @@ SCROLL_SPEED_HI = 3400 ; speedup
       bra @title_done
    @title_ready:
       setA8
-      lda #1
+      lda #0
       cmp game_state
-      beq @title_done
+      bne @title_done
          setA16
          lda #SCROLL_SPEED_MI
          sta screen_vscroll_speed_target
@@ -112,7 +113,7 @@ SCROLL_SPEED_HI = 3400 ; speedup
       setXY16
       ldx #SCROLL_SPEED_MI
       stx screen_vscroll_speed_target
-      ldx #SCROLL_ACCEL_LO
+      ldx #SCROLL_ACCEL_MID
       stx screen_vscroll_accel
       setXY8
    @not_a_up:
@@ -195,6 +196,7 @@ SCROLL_SPEED_HI = 3400 ; speedup
 .endproc
 .proc HandleCollisions
    setAXY8
+   ; player - enemy bullet
    ldx #enemy_bullet_first
    @loop_e:
       lda oam_lo+yc,x
@@ -205,8 +207,19 @@ SCROLL_SPEED_HI = 3400 ; speedup
          sbc oam_lo+xc+ship ; check if bullet matches ship x
          cmp #HIT_RANGE
          bcs @continue_e
-            ldx #ship ; explode ship if so
+            ; game over
+            setXY16
+            lda #2
+            sta game_state
+            ldx #SCROLL_SPEED_LO
+            stx screen_vscroll_speed_target
+            ldx #SCROLL_ACCEL_LO
+            stx screen_vscroll_accel
+            setXY8
+            ldx #ship
             jsr Explode
+
+            jsr DrawTitleGameOver
             bra @break_e
       @continue_e:
       .repeat 4
@@ -216,6 +229,7 @@ SCROLL_SPEED_HI = 3400 ; speedup
       bne @loop_e
    @break_e:
 
+   ; enemy - player bullet
    ldx #enemy_first
    @loop: ; each enemy
       lda oam_lo+yc,x

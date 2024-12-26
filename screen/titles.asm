@@ -10,4 +10,6 @@ title_credits1: .asciiz "BG ART BY ALEXREN"
 title_credits1_ofs: .word 32*26+7
 
 title_win: .asciiz "GAME COMPLETE"
+title_win_ofs: .word 32*12+9
 title_lose: .asciiz "GAME OVER"
+title_lose_ofs: .word 32*12+11

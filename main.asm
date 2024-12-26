@@ -9,8 +9,8 @@
 .include "gfx/objects.asm"
 .include "gfx/tilemap.asm"
 .include "gfx/charmap.inc"
-.include "draw/titles.asm"
-.include "draw/screen.asm"
+.include "screen/titles.asm"
+.include "screen/screen.asm"
 .include "gamelogic.asm"
 .include "enemy.asm"
 
@@ -114,7 +114,7 @@ title_text = $120 ; array of words
    lda #SCROLL_SPEED_LO
    sta screen_vscroll_speed
    sta screen_vscroll_speed_target
-   lda #SCROLL_ACCEL_LO
+   lda #SCROLL_ACCEL_MID
    sta screen_vscroll_accel
 
    lda #$ffff
@@ -142,7 +142,7 @@ title_text = $120 ; array of words
    lda #TITLE_TIME
    sta title_timer
    
-   stz game_state ; 0 title 1 game
+   stz game_state ; 0 title 1 game 2 dead 3 won
 
    ldx #0
 
@@ -160,15 +160,17 @@ title_text = $120 ; array of words
    jsr ScrollBG
    
    jsr UpdateCooldowns
+   ; check if game state is play
    lda game_state
-   beq @title
+   cmp #1
+   bne @frozen
       jsr ReadInput
       jsr TickBullets
       jsr TickEnemyBullets
       jsr HandleCollisions
       jsr TickEnemy
       jsr TickExplosions
-   @title:
+   @frozen:
    
    jmp GameLoop
 .endproc

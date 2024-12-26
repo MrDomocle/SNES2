@@ -22,6 +22,7 @@
       lda #$04
       sta title_text,x
 .endmacro
+; MARK: TITLE
 .proc DrawTitle
    jsr DrawTitleMain
    jsr DrawTitleCredits
@@ -57,6 +58,16 @@
    LoadText title_credits1
    ; draw title
    ldy title_credits1_ofs
+   jsr DrawText
+   setXY8
+   rts
+.endproc
+; MARK: GAME OVER
+.proc DrawTitleGameOver
+   setXY16
+   setA8
+   LoadText title_lose
+   ldy title_lose_ofs
    jsr DrawText
    setXY8
    rts
