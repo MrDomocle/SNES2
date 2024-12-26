@@ -1,5 +1,6 @@
 SHOT_INTERVAL = 6 ; frames of cooldown between shots
 BULLET_SPEED = 3 ; speed of bullets in pixels per frame
+BULLET_SPEED_ENEMY = 2
 ENEMY_HSPEED = 1 ; speed of enemies moving horizontally
 ENEMY_DIR_CHANGE_INTERVAL = 128 ; frames between randomising direction of amogi
 SHIP_BOUND_Y_HI = $cf
@@ -214,7 +215,6 @@ SCROLL_SPEED_HI = 3400 ; speedup
                sbc oam_lo+xc,x
                cmp #HIT_RANGE ; compare to enemy x
                bcs @continue_b
-                  dec amogus_count
                   phy
                   jsr Explode ; hide enemy in x
                   ply
@@ -258,131 +258,6 @@ SCROLL_SPEED_HI = 3400 ; speedup
          inx
       .endrepeat
       cpx #bullet_last
-      bne @loop
-   @return:
-   rts
-.endproc
-.proc TickEnemyBullets
-   setAXY8
-   ldx #enemy_bullet_first
-   @loop: ; iterate through every bullet and tick it if it's on screen
-      lda oam_lo+yc,x
-      cmp #(HIDDEN_Y-1)
-      bcs @continue ; skip this bullet if it's offscreen (register > #$f6)
-
-      adc #BULLET_SPEED
-      bcs @not_over
-         jsr HideObject ; hide if yc overflows
-         bra @continue
-      @not_over:
-      sta oam_lo+yc,x
-      
-      @continue:
-      .repeat 4
-         inx
-      .endrepeat
-      cpx #enemy_bullet_last
-      bne @loop
-   @return:
-   rts
-.endproc
-.proc TickEnemy
-   setAXY8
-   ldx #enemy_first
-   ldy #0
-   @loop:
-      lda oam_lo+yc,x
-      cmp #HIDDEN_Y
-      beq @continue ; skip if this one is offscreen
-
-      lda amogus_timer
-      beq @dir_change ; if timer 0, change direction to whatever tickRNG says
-         ; otherwise, continue moving in the same direction
-         lda amogus_directions,y
-         beq @right ; right if dir is 0
-            @left:
-               lda oam_lo+xc,x
-               sbc #ENEMY_HSPEED
-               sta oam_lo+xc,x
-               bra @continue
-         @right:
-            lda oam_lo+xc,x
-            adc #ENEMY_HSPEED
-            sta oam_lo+xc,x
-            bra @continue
-      @dir_change:
-      jsr TickRNG
-      lda random_word ; loads low byte
-      bit #1 ; check if even
-      bne @odd
-      @even:
-            lda #1
-            sta amogus_directions,y
-            bra @dir_done
-      @odd:
-         lda #0
-         sta amogus_directions,y
-         bra @dir_done
-
-      @dir_done:
-      lda random_word+1 ; high byte
-      and #8 ; 1/16th chance (if my rng is right)
-      beq @shot_done
-         phx
-         phy
-         ldx #enemy_bullet_first
-         @enemy_bullet_loop:
-            lda oam_lo+yc,x
-            cmp #HIDDEN_Y
-            beq @enemy_bullet_continue
-               txy ; store bullet offset in y
-               plx ; pull enemy offset to x
-               lda oam_lo+xc,x ; enemy x
-               sta oam_lo+xc,y ; bullet x
-               lda oam_lo+yc,x
-               sta oam_lo+yc,y
-               ; revert index changes
-               phx
-               tyx
-               bra @enemy_bullet_break
-            @enemy_bullet_continue:
-            .repeat 4
-               inx
-            .endrepeat
-            cpx #enemy_bullet_last
-            bne @enemy_bullet_loop 
-         @enemy_bullet_break:
-         plx
-         ply
-      @shot_done:
-      @continue:
-      .repeat 4
-         inx
-      .endrepeat
-      iny
-      cpx #enemy_last
-      bne @loop
-   @return:
-   rts
-.endproc
-.proc RandomiseEnemyPositions
-   setAXY8
-   ldx #enemy_first
-   @loop:
-      jsr TickRNG
-      lda random_word ; low byte
-      ; x coordinate: direct
-      sta oam_lo+xc,x
-      ; y coordinate: use high byte, crop some bits
-      lda random_word+1
-      and #$2f
-      adc #$20
-      sta oam_lo+yc,x
-      
-      .repeat 4
-         inx
-      .endrepeat
-      cpx #enemy_last
       bne @loop
    @return:
    rts

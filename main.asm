@@ -12,6 +12,7 @@
 .include "draw/titles.asm"
 .include "draw/screen.asm"
 .include "gamelogic.asm"
+.include "enemy.asm"
 
 .bss
    oam_lo: .res 512
@@ -32,24 +33,26 @@ TILEMAP_SIZE = 32*32*2 ; size of a 32x32 tilemap in bytes
 
 ; WRAM addresses ("variables")
 nmi_count = $00 ; word
-game_state = $02 ; byte
-shot_cooldown = $04 ; word
-joy1_buffer_last = $06 ; joy1_buffer of the last frame
-joy1_buffer = $08 ; word, buffer for storing joypad data
-joy1_up = $0a ; mask for buttons that were released
-joy1_down = $0c ; mask for buttons that were pressed
-screen_vscroll = $0e ; word, buffer for BG2VOFS with subpixels (16 subpixels in pixel)
-screen_vscroll_speed = $10 ; word, speed of scroll in subpixels/frame
-screen_vscroll_speed_target = $12 ; word, target for scroll speed acceleration
-screen_vscroll_accel = $14 ; word
-random_word = $1c ; rng outputs here
-title_timer = $1e ; byte
-amogus_count = $1f ; byte
-amogus_timer = $2f ; byte
-amogus_directions = $40 ; array of bytes 
-explosion_objs = $60 ; array of bytes
-explosion_timers = $80 ; array of bytes
-explosion_stages = $100 ; array of bytes
+game_state = nmi_count+2 ; byte
+shot_cooldown = game_state+1 ; word
+joy1_buffer_last = shot_cooldown+2 ; word, joy1_buffer of the last frame
+joy1_buffer = joy1_buffer_last+2 ; word, buffer for storing joypad data
+joy1_up = joy1_buffer+2 ; mask for buttons that were released
+joy1_down = joy1_up+2 ; mask for buttons that were pressed
+screen_vscroll = joy1_down+2 ; word, buffer for BG2VOFS with subpixels (16 subpixels in pixel)
+screen_vscroll_speed = screen_vscroll+2 ; word, speed of scroll in subpixels/frame
+screen_vscroll_speed_target = screen_vscroll_speed+2 ; word, target for scroll speed acceleration
+screen_vscroll_accel = screen_vscroll_speed_target+2 ; word
+
+random_word = screen_vscroll_accel+2 ; word, rng outputs here
+title_timer = random_word+2 ; byte
+amogus_timer = title_timer+1 ; byte
+amogus_directions = amogus_timer+1 ; array of bytes
+amogus_shot_timers = amogus_directions+ENEMY_POOL_SIZE ; array of bytes
+
+explosion_objs = amogus_shot_timers+ENEMY_POOL_SIZE ; array of bytes
+explosion_timers = explosion_objs+MAX_EXPLOSIONS ; array of bytes
+explosion_stages = explosion_timers+MAX_EXPLOSIONS ; array of bytes
 
 ZERO = $110 ; address that will be set to 0 for vram/cgram clears
 
@@ -121,6 +124,10 @@ title_text = $120 ; array of words
    ldx #0
    @enemy_clear_loop:
       stz amogus_directions,x
+      jsr TickRNG
+      lda random_word
+      sta amogus_shot_timers,x
+
       inx
       cpx #ENEMY_POOL_SIZE
       bne @enemy_clear_loop
@@ -132,7 +139,6 @@ title_text = $120 ; array of words
       cpx #MAX_EXPLOSIONS
       bne @explosion_clear_loop
    lda #ENEMY_POOL_SIZE
-   sta amogus_count
    lda #TITLE_TIME
    sta title_timer
    
@@ -158,6 +164,7 @@ title_text = $120 ; array of words
    beq @title
       jsr ReadInput
       jsr TickBullets
+      jsr TickEnemyBullets
       jsr HandleCollisions
       jsr TickEnemy
       jsr TickExplosions
