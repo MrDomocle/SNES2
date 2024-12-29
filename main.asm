@@ -59,7 +59,7 @@ explosion_stages: .res MAX_EXPLOSIONS ; array of bytes
 
 ZERO: .res 2 ; address that will be set to 0 for vram/cgram clears
 
-title_text: .res  ; array of words
+title_text: .res 2*32 ; buffer for tile data of titles before they're drawn. text should be drawn one line at a time, so it won't be longer than 32 words
 
 .segment "CODE"
 .proc ResetHandler
