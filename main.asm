@@ -31,34 +31,35 @@ CGRAM_SIZE = $0200 ; size of cgram in bytes
 OAM_SIZE = $0220 ; size of oam in bytes
 TILEMAP_SIZE = 32*32*2 ; size of a 32x32 tilemap in bytes
 
-; WRAM addresses ("variables")
-nmi_count = $00 ; word
-game_state = nmi_count+2 ; byte
-shot_cooldown = game_state+1 ; word
-joy1_buffer_last = shot_cooldown+2 ; word, joy1_buffer of the last frame
-joy1_buffer = joy1_buffer_last+2 ; word, buffer for storing joypad data
-joy1_up = joy1_buffer+2 ; mask for buttons that were released
-joy1_down = joy1_up+2 ; mask for buttons that were pressed
-screen_vscroll = joy1_down+2 ; word, buffer for BG2VOFS with subpixels (16 subpixels in pixel)
-screen_vscroll_speed = screen_vscroll+2 ; word, speed of scroll in subpixels/frame
-screen_vscroll_speed_target = screen_vscroll_speed+2 ; word, target for scroll speed acceleration
-screen_vscroll_accel = screen_vscroll_speed_target+2 ; word
+; WRAM map
+.segment "ZEROPAGE"
+nmi_count: .res 2 ; word
+game_state: .res 1 ; byte
+shot_cooldown: .res 2 ; word
+joy1_buffer_last: .res 2 ; word, joy1_buffer of the last frame
+joy1_buffer: .res 2 ; word, buffer for storing joypad data
+joy1_up: .res 2 ; mask for buttons that were released
+joy1_down: .res 2 ; mask for buttons that were pressed
+screen_vscroll: .res 2 ; word, buffer for BG2VOFS with subpixels (16 subpixels in pixel)
+screen_vscroll_speed: .res 2 ; word, speed of scroll in subpixels/frame
+screen_vscroll_speed_target: .res 2 ; word, target for scroll speed acceleration
+screen_vscroll_accel: .res 2 ; word
 
-random_word = screen_vscroll_accel+2 ; word, rng outputs here
-title_timer = random_word+2 ; byte
-mosaic_stage = title_timer+1 ; byte
-mosaic_mask = mosaic_stage+1 ; byte
-amogus_timer = mosaic_mask+1 ; byte
-amogus_directions = amogus_timer+1 ; array of bytes
-amogus_shot_timers = amogus_directions+ENEMY_POOL_SIZE ; array of bytes
+random_word: .res 2 ; word, rng outputs here
+title_timer: .res 2 ; byte
+mosaic_stage: .res 2 ; byte
+mosaic_mask: .res 2 ; byte
+amogus_timer: .res 2 ; byte
+amogus_directions: .res ENEMY_POOL_SIZE ; array of bytes
+amogus_shot_timers: .res ENEMY_POOL_SIZE ; array of bytes
 
-explosion_objs = amogus_shot_timers+ENEMY_POOL_SIZE ; array of bytes
-explosion_timers = explosion_objs+MAX_EXPLOSIONS ; array of bytes
-explosion_stages = explosion_timers+MAX_EXPLOSIONS ; array of bytes
+explosion_objs: .res MAX_EXPLOSIONS ; array of bytes
+explosion_timers: .res MAX_EXPLOSIONS ; array of bytes
+explosion_stages: .res MAX_EXPLOSIONS ; array of bytes
 
-ZERO = $110 ; address that will be set to 0 for vram/cgram clears
+ZERO: .res 2 ; address that will be set to 0 for vram/cgram clears
 
-title_text = $120 ; array of words
+title_text: .res  ; array of words
 
 .segment "CODE"
 .proc ResetHandler

@@ -74,6 +74,7 @@
    rts
 .endproc
 
+; MARK: TECH
 .proc DrawText ; load tilemap start offset in (16-bit) Y
    setXY16
    ; set VMAIN
@@ -146,6 +147,7 @@
    jsr MosaicDissolveUpdate
    rts
 .endproc
+; MARK: Transition to Greatness
 .proc MosaicDissolveUpdate
    lda mosaic_stage
    .repeat 4
