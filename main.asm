@@ -1,5 +1,4 @@
 .p816
-;.smart
 
 .include "include/snes.inc"
 .include "include/macros.inc"
@@ -14,23 +13,10 @@
 .include "gamelogic.asm"
 .include "enemy.asm"
 
-.bss
+.segment "BSS"
    oam_lo: .res 512
    oam_hi: .res 32
    oam_end:
-
-VRAM_CHARS = $0000 ; vram offset of bg characters
-VRAM_BG1 = $1000 ; vram offset of tilemap 
-VRAM_BG2 = $2000 
-VRAM_BG1SC = %00010000 ; tilemap settings, including 6-bit address
-VRAM_BG2SC = %00100000 
-VRAM_LETTER_START = $7e ; in tilemap address format
-LETTER_ATTR = $04 ; attribute for letter tiles
-VRAM_SIZE = $ffff ; size of vram in bytes
-CGRAM_SIZE = $0200 ; size of cgram in bytes
-OAM_SIZE = $0220 ; size of oam in bytes
-TILEMAP_SIZE = 32*32*2 ; size of a 32x32 tilemap in bytes
-
 ; WRAM map
 .segment "ZEROPAGE"
 nmi_count: .res 2 ; word
@@ -58,12 +44,12 @@ mosaic_target: .res 1 ; byte, target mosaic stage
 mosaic_mode: .res 1 ; byte, 0 - hide title, 1 - game over (blur bg), 2 - game restart (fade in bg)
 
 amogus_timer: .res 1 ; byte
-amogus_directions: .res ENEMY_POOL_SIZE ; array of bytes
-amogus_shot_timers: .res ENEMY_POOL_SIZE ; array of bytes
+amogus_directions: .res POOL_SIZE_ENEMY ; array of bytes
+amogus_shot_timers: .res POOL_SIZE_ENEMY ; array of bytes
 
-explosion_objs: .res MAX_EXPLOSIONS ; array of bytes
-explosion_timers: .res MAX_EXPLOSIONS ; array of bytes
-explosion_stages: .res MAX_EXPLOSIONS ; array of bytes
+explosion_objs: .res POOL_SIZE_EXPLOSION ; array of bytes
+explosion_timers: .res POOL_SIZE_EXPLOSION ; array of bytes
+explosion_stages: .res POOL_SIZE_EXPLOSION ; array of bytes
 
 ZERO: .res 2 ; stores the 0 for clearing VRAM/CGRAM with DMA
 
@@ -143,16 +129,16 @@ title_text: .res 2*32 ; buffer for tile data of titles before they're drawn. tex
       sta amogus_shot_timers,x
 
       inx
-      cpx #ENEMY_POOL_SIZE
+      cpx #POOL_SIZE_ENEMY
       bne @enemy_clear_loop
    ldx #0
    @explosion_clear_loop:
       lda #EXPLODE_DISABLED_STAGE
       sta explosion_stages,x
       inx
-      cpx #MAX_EXPLOSIONS
+      cpx #POOL_SIZE_EXPLOSION
       bne @explosion_clear_loop
-   lda #ENEMY_POOL_SIZE
+   lda #POOL_SIZE_ENEMY
    lda #TITLE_TIME
    sta title_timer
    

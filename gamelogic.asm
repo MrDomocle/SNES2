@@ -1,49 +1,65 @@
-SHOT_INTERVAL = 6 ; frames of cooldown between shots
+; Technical constants
+VRAM_CHARS = $0000 ; vram offset of bg characters
+VRAM_BG1 = $1000 ; vram offset of tilemap 
+VRAM_BG2 = $2000 
+VRAM_BG1SC = %00010000 ; tilemap settings, including 6-bit address
+VRAM_BG2SC = %00100000 
+VRAM_LETTER_START = $7e ; in tilemap address format
+LETTER_ATTR = $04 ; attribute for letter tiles
+VRAM_SIZE = $ffff ; size of vram in bytes
+CGRAM_SIZE = $0200 ; size of cgram in bytes
+OAM_SIZE = $0220 ; size of oam in bytes
+TILEMAP_SIZE = 32*32*2 ; size of a 32x32 tilemap in bytes
+
+; Logic constants
+
+; Entity speeds
 BULLET_SPEED = 3 ; speed of bullets in pixels per frame
 BULLET_SPEED_ENEMY = 2
 ENEMY_HSPEED = 1 ; speed of enemies moving horizontally
+; Timings
+TITLE_TIME = 240 ; time for title to stay in frames
+EXPLODE_TIME = 8 ; frames between explosion stages
+SHOT_INTERVAL = 6 ; frames of cooldown between shots
 ENEMY_DIR_CHANGE_INTERVAL = 128 ; frames between randomising direction of amogi
-
+; Controls
 SHIP_BOUND_Y_HI = $cf
 SHIP_BOUND_Y_LO = $20
 SHIP_BOUND_X_HI = $f0
 SHIP_BOUND_X_LO = $00
 HIT_RANGE = 16
 
-EXPLODE_TIME = 8
-EXPLODE_DISABLED_STAGE = $ff ; set to explode stage when there isn't an explosion in that slot
-MAX_EXPLOSIONS = 16
+; Entity data
 EXPLODE_TILE_1 = $04
 EXPLODE_TILE_2 = $06
-
 ENEMY_TILE = $02
-TITLE_TIME = 240 ; time for title to stay in frames
+EXPLODE_DISABLED_STAGE = $ff ; set to explode stage when there isn't an explosion in that slot
 
+; Scrolling
 SCROLL_ACCEL_LO = 12 ; game -> game over
 SCROLL_ACCEL_MID = 24 ; title -> game
-SCROLL_ACCEL_HI = 48 ; A press
-SCROLL_SPEED_LO = 64 ; shown during titles
-SCROLL_SPEED_MI = 1024 ; shown normally
+SCROLL_ACCEL_HI = 48 ; game -> speedup
+
+SCROLL_SPEED_LO = 64 ; during titles
+SCROLL_SPEED_MI = 1024 ; during gameplay
 SCROLL_SPEED_HI = 3400 ; speedup
 
-MOSAIC_DIR_HIDE = 1
-MOSAIC_DIR_SHOW = 0
+; Mosaic
+MOSAIC_MODE_FADE_OUT_TITLE = 0
+MOSAIC_MODE_FADE_OUT_BG = 1
+MOSAIC_MODE_FADE_IN_BG = 2
+
+MOSAIC_MASK_TITLE = %00000001
+MOSAIC_MASK_BG = %00000010
 
 MOSAIC_TARGET_FADE_OUT_TITLE = 15
 MOSAIC_TARGET_FADE_OUT_BG = 6
 MOSAIC_TARGET_FADE_IN = 0
 
-MOSAIC_MASK_TITLE = 1
-MOSAIC_MASK_BG = 2
-
-MOSAIC_MODE_FADE_OUT_TITLE = 0
-MOSAIC_MODE_FADE_OUT_BG = 1
-MOSAIC_MODE_FADE_IN_TITLE = 2
-MOSAIC_MODE_FADE_IN_BG = 3
-
 MOSAIC_SPEED_FADE_IN_BG = 30
 MOSAIC_SPEED_FADE_OUT_TITLE = 256
 MOSAIC_SPEED_FADE_OUT_BG = 15
+
 .segment "CODE"
 ; MARK: CD & CONTROL
 .proc UpdateCooldowns
@@ -379,7 +395,7 @@ MOSAIC_SPEED_FADE_OUT_BG = 15
          plx
       @continue:
       inx
-      cpx #MAX_EXPLOSIONS
+      cpx #POOL_SIZE_EXPLOSION
       bne @loop
 
       rts
@@ -403,7 +419,7 @@ MOSAIC_SPEED_FADE_OUT_BG = 15
          bra @break
       @continue:
       iny
-      cpy #MAX_EXPLOSIONS
+      cpy #POOL_SIZE_EXPLOSION
       bne @loop
       @break:
 
