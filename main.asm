@@ -25,7 +25,7 @@ VRAM_BG2 = $2000
 VRAM_BG1SC = %00010000 ; tilemap settings, including 6-bit address
 VRAM_BG2SC = %00100000 
 VRAM_LETTER_START = $7e ; in tilemap address format
-LETTER_ATTR = $04
+LETTER_ATTR = $04 ; attribute for letter tiles
 VRAM_SIZE = $ffff ; size of vram in bytes
 CGRAM_SIZE = $0200 ; size of cgram in bytes
 OAM_SIZE = $0220 ; size of oam in bytes
@@ -46,10 +46,12 @@ screen_vscroll_speed_target: .res 2 ; word, target for scroll speed acceleration
 screen_vscroll_accel: .res 2 ; word
 
 random_word: .res 2 ; word, rng outputs here
-title_timer: .res 2 ; byte
-mosaic_stage: .res 2 ; byte
-mosaic_mask: .res 2 ; byte
-amogus_timer: .res 2 ; byte
+title_timer: .res 1 ; byte
+
+mosaic_stage: .res 1 ; byte
+mosaic_mask: .res 1 ; byte
+
+amogus_timer: .res 1 ; byte
 amogus_directions: .res ENEMY_POOL_SIZE ; array of bytes
 amogus_shot_timers: .res ENEMY_POOL_SIZE ; array of bytes
 
@@ -57,7 +59,7 @@ explosion_objs: .res MAX_EXPLOSIONS ; array of bytes
 explosion_timers: .res MAX_EXPLOSIONS ; array of bytes
 explosion_stages: .res MAX_EXPLOSIONS ; array of bytes
 
-ZERO: .res 2 ; address that will be set to 0 for vram/cgram clears
+ZERO: .res 2 ; stores the 0 for clearing VRAM/CGRAM with DMA
 
 title_text: .res 2*32 ; buffer for tile data of titles before they're drawn. text should be drawn one line at a time, so it won't be longer than 32 words
 
