@@ -115,7 +115,7 @@
    doDMA empty_tile,0,<VMDATAL,TILEMAP_SIZE,%00001001 ; DMA without incrementing A address (copy empty_tile over and over)
    rts
 .endproc
-
+; MARK: BG SCROLL
 .proc ScrollBG
    ; acceleration
    setA16
@@ -132,38 +132,131 @@
       sta screen_vscroll_speed
    @accel_done:
    ; set scroll
-   lda screen_vscroll
-   sbc screen_vscroll_speed
-   sta screen_vscroll
+   lda screen_vscroll_sub
+   sbc screen_vscroll_speed ; will overflow to screen_vscroll (MSB)
+   sta screen_vscroll_sub
    setA8
-   lda screen_vscroll+1 ; MSB
+   lda screen_vscroll
    sta BG2VOFS
    stz BG2VOFS
    rts
 .endproc
-.proc MosaicDissolve
+; MARK: Transition Init
+.proc MosaicFadeOutTitle
+   ; set up mosaic transition parameters for hiding title text
+   stz mosaic_substage
+   stz mosaic_stage
+   lda #MOSAIC_MASK_TITLE
+   sta mosaic_mask
+   lda #MOSAIC_TARGET_FADE_OUT_TITLE
+   sta mosaic_target
+   lda #MOSAIC_MODE_FADE_OUT_TITLE
+   sta mosaic_mode
+   ; start transition
    lda #1
-   sta mosaic_stage
-   jsr MosaicDissolveUpdate
+   sta mosaic_active
+   stz mosaic_stage
+   jsr MosaicUpdate
    rts
 .endproc
-; MARK: Transition to Greatness
-.proc MosaicDissolveUpdate
-   lda mosaic_stage
-   .repeat 4
-      asl ; shift stage 4 bits left for MOSAIC register format
-   .endrepeat
-   adc mosaic_mask ; set lowest 2 bits to activate bg1/2 mosaic
-   sta MOSAIC
-   ; check for last stage on title
-   lda mosaic_mask
-   cmp #1
-   bne @return
+.proc MosaicFadeOutBG
+   ; set up mosaic transition parameters for blurring bg
+   stz mosaic_substage
+   stz mosaic_stage
+   lda #MOSAIC_MASK_BG
+   sta mosaic_mask
+   lda #MOSAIC_TARGET_FADE_OUT_BG
+   sta mosaic_target
+   lda #MOSAIC_MODE_FADE_OUT_BG
+   sta mosaic_mode
+   ; start transition
+   lda #1
+   sta mosaic_active
+   stz mosaic_stage
+   jsr MosaicUpdate
+   rts
+.endproc
+.proc MosaicFadeInBG
+   ; set up mosaic transition parameters for unblurring bg
+   stz mosaic_substage
+   stz mosaic_stage
+   lda #MOSAIC_MASK_BG
+   sta mosaic_mask
+   lda #MOSAIC_TARGET_FADE_IN
+   sta mosaic_target
+   lda #MOSAIC_MODE_FADE_IN_BG
+   sta mosaic_mode
+   ; start transition
+   lda #1
+   sta mosaic_active
+   lda #MOSAIC_TARGET_FADE_OUT_BG
+   sta mosaic_stage
+   jsr MosaicUpdate
+   rts
+.endproc
+
+; MARK: Transition Update
+.proc MosaicUpdate
+   lda mosaic_mode
+   cmp #MOSAIC_MODE_FADE_OUT_TITLE
+   beq @title_out
+   cmp #MOSAIC_MODE_FADE_OUT_BG
+   beq @bg_out
+   cmp #MOSAIC_MODE_FADE_IN_BG
+   beq @bg_in
+
+   @title_out:
       lda mosaic_stage
-      cmp #$0f
-      bcc @return
-         stz MOSAIC
+      cmp mosaic_target
+      beq @finish_title_out
+         setA16
+         lda mosaic_substage
+         adc #MOSAIC_SPEED_FADE_OUT_TITLE
+         sta mosaic_substage
+         setA8
+         bra @apply
+      @finish_title_out:
+         stz mosaic_active
          jsr ClearText
+         bra @return
+
+   @bg_out:
+      lda mosaic_stage
+      cmp mosaic_target
+      beq @finish_bg_out
+         setA16
+         lda mosaic_substage
+         adc #MOSAIC_SPEED_FADE_OUT_BG
+         sta mosaic_substage
+         setA8
+         bra @apply
+      @finish_bg_out:
+         stz mosaic_active
+         bra @return
+
+   @bg_in:
+      lda mosaic_stage
+      cmp mosaic_target
+      beq @finish_bg_in
+         setA16
+         lda mosaic_substage
+         sbc #MOSAIC_SPEED_FADE_IN_BG
+         sta mosaic_substage
+         setA8
+         bra @apply
+      @finish_bg_in:
+         ; start title fade out immediately
+         jsr MosaicFadeOutTitle
+         bra @return
+
+   @apply:
+      lda mosaic_stage
+      .repeat 4
+         asl ; shift stage 4 bits left for MOSAIC register format
+      .endrepeat
+      adc mosaic_mask ; set lowest 4 bits according to mask (which BGs will be blurred)
+      sta MOSAIC
+
    @return:
    rts
 .endproc

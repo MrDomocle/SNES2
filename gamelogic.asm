@@ -3,26 +3,47 @@ BULLET_SPEED = 3 ; speed of bullets in pixels per frame
 BULLET_SPEED_ENEMY = 2
 ENEMY_HSPEED = 1 ; speed of enemies moving horizontally
 ENEMY_DIR_CHANGE_INTERVAL = 128 ; frames between randomising direction of amogi
+
 SHIP_BOUND_Y_HI = $cf
 SHIP_BOUND_Y_LO = $20
 SHIP_BOUND_X_HI = $f0
 SHIP_BOUND_X_LO = $00
 HIT_RANGE = 16
+
 EXPLODE_TIME = 8
 EXPLODE_DISABLED_STAGE = $ff ; set to explode stage when there isn't an explosion in that slot
 MAX_EXPLOSIONS = 16
 EXPLODE_TILE_1 = $04
 EXPLODE_TILE_2 = $06
+
 ENEMY_TILE = $02
 TITLE_TIME = 240 ; time for title to stay in frames
+
 SCROLL_ACCEL_LO = 12 ; game -> game over
 SCROLL_ACCEL_MID = 24 ; title -> game
 SCROLL_ACCEL_HI = 48 ; A press
 SCROLL_SPEED_LO = 64 ; shown during titles
 SCROLL_SPEED_MI = 1024 ; shown normally
 SCROLL_SPEED_HI = 3400 ; speedup
+
+MOSAIC_DIR_HIDE = 1
+MOSAIC_DIR_SHOW = 0
+
+MOSAIC_TARGET_FADE_OUT_TITLE = 15
+MOSAIC_TARGET_FADE_OUT_BG = 6
+MOSAIC_TARGET_FADE_IN = 0
+
 MOSAIC_MASK_TITLE = 1
-MOSAIC_MASK_GAME_OVER = 2
+MOSAIC_MASK_BG = 2
+
+MOSAIC_MODE_FADE_OUT_TITLE = 0
+MOSAIC_MODE_FADE_OUT_BG = 1
+MOSAIC_MODE_FADE_IN_TITLE = 2
+MOSAIC_MODE_FADE_IN_BG = 3
+
+MOSAIC_SPEED_FADE_IN_BG = 30
+MOSAIC_SPEED_FADE_OUT_TITLE = 256
+MOSAIC_SPEED_FADE_OUT_BG = 15
 .segment "CODE"
 ; MARK: CD & CONTROL
 .proc UpdateCooldowns
@@ -33,15 +54,10 @@ MOSAIC_MASK_GAME_OVER = 2
       dec shot_cooldown
    @shot_ready:
    
-   lda mosaic_stage
-   cmp #0 ; check if transition active
-   beq @mosaic_ready
-   cmp #$0f ; check if not last stage
-   bcs @mosaic_ready
-      inc mosaic_stage
-      jsr MosaicDissolveUpdate
-      bra @mosaic_ready
-   @mosaic_ready:
+   lda mosaic_active ; check if mosaic is active, update transition if so
+   beq @mosaic_inactive
+      jsr MosaicUpdate
+   @mosaic_inactive:
 
    lda title_timer
    beq @title_ready
@@ -52,11 +68,13 @@ MOSAIC_MASK_GAME_OVER = 2
       lda game_state
       cmp #0
       bne @title_done
-         jsr MosaicDissolve
+         jsr MosaicFadeOutTitle
+         ; scroll speed change
          setA16
          lda #SCROLL_SPEED_MI
          sta screen_vscroll_speed_target
          setA8
+         ; done, start gameplay
          lda #1
          sta game_state
          jsr RandomiseEnemyPositions
@@ -232,9 +250,9 @@ MOSAIC_MASK_GAME_OVER = 2
             ldx #ship
             jsr Explode
             jsr HideEnemies
-            lda #MOSAIC_MASK_GAME_OVER
+            lda #MOSAIC_MASK_BG
             sta mosaic_mask
-            jsr MosaicDissolve
+            jsr MosaicFadeOutBG
             bra @break_e
       @continue_e:
       .repeat 4

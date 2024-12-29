@@ -1,5 +1,5 @@
 .p816
-.smart
+;.smart
 
 .include "include/snes.inc"
 .include "include/macros.inc"
@@ -34,13 +34,15 @@ TILEMAP_SIZE = 32*32*2 ; size of a 32x32 tilemap in bytes
 ; WRAM map
 .segment "ZEROPAGE"
 nmi_count: .res 2 ; word
-game_state: .res 1 ; byte
+game_state: .res 1 ; byte, 0 title 1 game 2 dead 3 won
 shot_cooldown: .res 2 ; word
 joy1_buffer_last: .res 2 ; word, joy1_buffer of the last frame
 joy1_buffer: .res 2 ; word, buffer for storing joypad data
 joy1_up: .res 2 ; mask for buttons that were released
 joy1_down: .res 2 ; mask for buttons that were pressed
-screen_vscroll: .res 2 ; word, buffer for BG2VOFS with subpixels (16 subpixels in pixel)
+
+screen_vscroll_sub: .res 1 ; byte, overflows into screen_vscroll when using 16-bit addition/subtraction
+screen_vscroll: .res 1 ; byte, actual BG2VOFS (MSB of screen_vscroll_sub)
 screen_vscroll_speed: .res 2 ; word, speed of scroll in subpixels/frame
 screen_vscroll_speed_target: .res 2 ; word, target for scroll speed acceleration
 screen_vscroll_accel: .res 2 ; word
@@ -48,8 +50,12 @@ screen_vscroll_accel: .res 2 ; word
 random_word: .res 2 ; word, rng outputs here
 title_timer: .res 1 ; byte
 
-mosaic_stage: .res 1 ; byte
-mosaic_mask: .res 1 ; byte
+mosaic_active: .res 1 ; byte, whether to run transition
+mosaic_substage: .res 1 ; byte, overflows into mosaic_stage with 16-bit addition/subtraction
+mosaic_stage: .res 1 ; byte, actual stage (MSB of mosaic_substage)
+mosaic_mask: .res 1 ; byte, lower 4 bits of MOSAIC to determine which backgrounds will be affected by the transition
+mosaic_target: .res 1 ; byte, target mosaic stage
+mosaic_mode: .res 1 ; byte, 0 - hide title, 1 - game over (blur bg), 2 - game restart (fade in bg)
 
 amogus_timer: .res 1 ; byte
 amogus_directions: .res ENEMY_POOL_SIZE ; array of bytes
@@ -115,6 +121,7 @@ title_text: .res 2*32 ; buffer for tile data of titles before they're drawn. tex
    stz nmi_count
    stz shot_cooldown
    stz joy1_buffer
+   stz mosaic_active
 
    lda #SCROLL_SPEED_LO
    sta screen_vscroll_speed
@@ -126,9 +133,8 @@ title_text: .res 2*32 ; buffer for tile data of titles before they're drawn. tex
    sta screen_vscroll
    setA8
    stz amogus_timer
-   stz mosaic_stage
-   lda #MOSAIC_MASK_TITLE
-   sta mosaic_mask
+
+   ; object things
    ldx #0
    @enemy_clear_loop:
       stz amogus_directions,x
@@ -150,7 +156,7 @@ title_text: .res 2*32 ; buffer for tile data of titles before they're drawn. tex
    lda #TITLE_TIME
    sta title_timer
    
-   stz game_state ; 0 title 1 game 2 dead 3 won
+   stz game_state
 
    ldx #0
 
