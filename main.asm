@@ -21,6 +21,8 @@
 .segment "ZEROPAGE"
 nmi_count: .res 2 ; word
 game_state: .res 1 ; byte, 0 title 1 game 2 dead 3 won
+score_l: .res 2 ; word, low word for 24-bit BCD score
+score_h: .res 1 ; byte, high byte for 24-bit BCD score
 shot_cooldown: .res 2 ; word
 joy1_buffer_last: .res 2 ; word, joy1_buffer of the last frame
 joy1_buffer: .res 2 ; word, buffer for storing joypad data
@@ -105,6 +107,8 @@ title_text: .res 2*32 ; buffer for tile data of titles before they're drawn. tex
    setA16
    stz ZERO
    stz nmi_count
+   stz score_l
+   stz score_h
    stz shot_cooldown
    stz joy1_buffer
    stz mosaic_active

@@ -1,4 +1,4 @@
-POOL_SIZE_ENEMY = 15 ; POOL_SIZE_ENEMY-3 must be divisible by 4 because of oam_hi layout (big bit is stored there)
+POOL_SIZE_ENEMY = 43 ; POOL_SIZE_ENEMY-3 must be divisible by 4 because of oam_hi layout (big bit is stored there)
 POOL_SIZE_BULLET = 9
 POOL_SIZE_BULLET_ENEMY = 8
 POOL_SIZE_EXPLOSION = 16

@@ -5,6 +5,7 @@ VRAM_BG2 = $2000
 VRAM_BG1SC = %00010000 ; tilemap settings, including 6-bit address
 VRAM_BG2SC = %00100000 
 VRAM_LETTER_START = $7e ; in tilemap address format
+VRAM_NUMBER_START = $9c ; in tilemap address format
 LETTER_ATTR = $04 ; attribute for letter tiles
 VRAM_SIZE = $ffff ; size of vram in bytes
 CGRAM_SIZE = $0200 ; size of cgram in bytes
@@ -12,6 +13,10 @@ OAM_SIZE = $0220 ; size of oam in bytes
 TILEMAP_SIZE = 32*32*2 ; size of a 32x32 tilemap in bytes
 
 ; Logic constants
+
+; Scoring (USES BCD)
+ENEMY_DEAD_SCORE = $9999
+SCREEN_CLEAR_SCORE = $8192
 
 ; Entity speeds
 BULLET_SPEED = 3 ; speed of bullets in pixels per frame
@@ -61,7 +66,7 @@ MOSAIC_SPEED_FADE_OUT_TITLE = 256
 MOSAIC_SPEED_FADE_OUT_BG = 15
 
 .segment "CODE"
-; MARK: CD & CONTROL
+; MARK: CD & CONTROLS
 .proc UpdateCooldowns
    setXY16
    setA8
@@ -205,7 +210,28 @@ MOSAIC_SPEED_FADE_OUT_BG = 15
    setA16
    rts
 .endproc
-.proc MoveShip ; load direction to X before calling. bits 0,1: 00 up 01 down 10 left 11 right
+.proc AddScore ; load (16-bit BCD) increment to accumulator before call
+   sed
+   adc score_l
+   sta score_l
+   bcc @return
+      setA8
+      lda score_h
+      adc #1
+      sta score_h
+      bcc @return
+         ; 24 bit BCD (999,999) limit reached - win condition
+         cld
+         lda #3
+         sta game_state
+         jsr DrawTitleWin
+   @return:
+   setA16
+   cld
+   jsr DrawScore
+   rts
+.endproc
+.proc MoveShip
    setA8
    cpx #%00 ; up
    bne @not_up
@@ -240,6 +266,7 @@ MOSAIC_SPEED_FADE_OUT_BG = 15
    setA16
    rts
 .endproc
+; MARK: Collisions
 .proc HandleCollisions
    setAXY8
    ; player - enemy bullet
@@ -299,6 +326,11 @@ MOSAIC_SPEED_FADE_OUT_BG = 15
                sbc oam_lo+xc,x
                cmp #HIT_RANGE ; compare to enemy x
                bcs @continue_b
+                  ; increment score
+                  setA16
+                     lda #ENEMY_DEAD_SCORE
+                     jsr AddScore
+                  setA8
                   phy
                   jsr Explode ; hide enemy in x
                   ply

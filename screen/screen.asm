@@ -1,5 +1,5 @@
 .segment "CODE"
-.macro LoadText label
+.macro LoadText label ; load .asciiz text as tiles to title_text
    ldx #0
    ldy #0
    @loop:
@@ -9,7 +9,7 @@
          adc #VRAM_LETTER_START
          sta title_text,x
          inx
-         lda #$04
+         lda #LETTER_ATTR
          sta title_text,x
          inx
          lda label,y
@@ -19,8 +19,45 @@
       @break:
       sta title_text,x
       inx
-      lda #$04
+      lda #LETTER_ATTR
       sta title_text,x
+.endmacro
+.macro LoadScoreText ; load bcd text as tiles to title_text
+   ldx #0
+   ldy #3
+   @loop:
+      lda score_l,y
+      .repeat 4
+         lsr
+      .endrepeat
+      adc #VRAM_LETTER_START
+      sta title_text,x
+      inx
+      lda #LETTER_ATTR
+      sta title_text,x
+      inx
+      lda score_l,y
+      .repeat 4
+         asl
+      .endrepeat
+      .repeat 4
+         lsr
+      .endrepeat
+      adc #VRAM_LETTER_START
+      sta title_text,x
+      inx
+      lda #LETTER_ATTR
+      sta title_text,x
+      inx
+
+      dey
+      cpy #0
+      bne @loop
+
+   stz title_text,x
+   inx
+   lda #LETTER_ATTR
+   sta title_text,x
 .endmacro
 ; MARK: TITLE
 .proc DrawTitle
@@ -63,12 +100,31 @@
    rts
 .endproc
 
-; MARK: GAME OVER
 .proc DrawTitleGameOver
    setXY16
    setA8
    LoadText title_lose
    ldy title_lose_ofs
+   jsr DrawText
+   setXY8
+   rts
+.endproc
+
+.proc DrawTitleWin
+   setXY16
+   setA8
+   LoadText title_win
+   ldy title_win_ofs
+   jsr DrawText
+   setXY8
+   rts
+.endproc
+
+.proc DrawScore
+   setXY16
+   setA8
+   LoadScoreText
+   ldy #32
    jsr DrawText
    setXY8
    rts
