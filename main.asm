@@ -17,10 +17,13 @@
    oam_lo: .res 512
    oam_hi: .res 32
    oam_end:
-; WRAM map
+; MARK: WRAM map
 .segment "ZEROPAGE"
 nmi_count: .res 2 ; word
+ZERO: .res 2 ; stores the 0 for clearing VRAM/CGRAM with DMA
+ZERO_OAM: .res 2 ; stores the OAM data for a hidden sprite
 game_state: .res 1 ; byte, 0 title 1 game 2 dead 3 won
+oam_update: .res 1 ; byte, ccccccba: a=clear oam, b=clear buffer, c(any)=update oam normally, neither=do nothing
 score_l: .res 2 ; word, low word for 24-bit BCD score
 score_h: .res 1 ; byte, high byte for 24-bit BCD score
 shot_cooldown: .res 2 ; word
@@ -45,18 +48,19 @@ mosaic_mask: .res 1 ; byte, lower 4 bits of MOSAIC to determine which background
 mosaic_target: .res 1 ; byte, target mosaic stage
 mosaic_mode: .res 1 ; byte, 0 - hide title, 1 - game over (blur bg), 2 - game restart (fade in bg)
 
-amogus_timer: .res 1 ; byte
+amogus_timer: .res 1 ; byte, timer for updating amogus directions randomly
 amogus_directions: .res POOL_SIZE_ENEMY ; array of bytes
-amogus_shot_timers: .res POOL_SIZE_ENEMY ; array of bytes
+amogus_shot_timers: .res POOL_SIZE_ENEMY ; array of bytes, cooldown between shots of each amogus
 
 explosion_objs: .res POOL_SIZE_EXPLOSION ; array of bytes
 explosion_timers: .res POOL_SIZE_EXPLOSION ; array of bytes
 explosion_stages: .res POOL_SIZE_EXPLOSION ; array of bytes
 
-ZERO: .res 2 ; stores the 0 for clearing VRAM/CGRAM with DMA
+title_draw_now: .res 1 ; byte, individual bits toggle title types: C---dcba, a=title screen, b=score, c=game over, d=game complete, C=clear screen
+title_ofs: .res 2 ; word, VRAM offset for currently rendering title
+title_text: .res 2*32 ; array of words, buffer for tile data of titles before they're drawn. text should be drawn one line at a time, so it won't be longer than 32 words
 
-title_text: .res 2*32 ; buffer for tile data of titles before they're drawn. text should be drawn one line at a time, so it won't be longer than 32 words
-
+; MARK: ResetHandler
 .segment "CODE"
 .proc ResetHandler
    ; init dance
@@ -65,50 +69,21 @@ title_text: .res 2*32 ; buffer for tile data of titles before they're drawn. tex
    xce ; swap carry and emulation bits
 
    setAXY8 ; start in 8-bit mode
-   stz random_word
-   stz random_word+1
-
-   ; set bg and obj modes
-   lda #%00000001
-   sta BGMODE
-   lda #%00000000
-   sta OBSEL ; sssnnbbb
-   ; set tilemap address
-   lda #VRAM_BG1SC
-   sta BG1SC
-   lda #VRAM_BG2SC
-   sta BG2SC
-
-   jsr ClearVRAM
-   jsr CharLoad ; load character data to VRAM
-   jsr ClearCGRAM
-   jsr SetPalette
-   jsr ClearOAM
-   jsr LoadOBJ
-   jsr ClearText
-   jsr DrawTitle
-   jsr BG2Load
-   jsr UpdateOAM
    
-   ; set main & subscreen designations
-   lda #%00010011
-   sta TM
-   lda #%00000010
-   sta TS
 
-   lda #$0f
-   sta INIDISP
-
-   ; enable non-maskable interrupt
-   lda #$81
-   sta NMITIMEN
-   
-   ; clear vars
+   ; MARK: variable init
    setA16
    stz ZERO
+
+   lda #$f730
+   sta ZERO_OAM
+
    stz nmi_count
-   stz score_l
-   stz score_h
+   stz random_word
+
+   lda #$9999
+   sta score_l
+   
    stz shot_cooldown
    stz joy1_buffer
    stz mosaic_active
@@ -116,13 +91,20 @@ title_text: .res 2*32 ; buffer for tile data of titles before they're drawn. tex
    lda #SCROLL_SPEED_LO
    sta screen_vscroll_speed
    sta screen_vscroll_speed_target
-   lda #SCROLL_ACCEL_MID
+   lda #SCROLL_ACCEL_MI
    sta screen_vscroll_accel
 
    lda #$ffff
    sta screen_vscroll
    setA8
+   lda #$41
+   sta score_h
    stz amogus_timer
+   
+   lda #4
+   sta oam_update
+
+   stz title_draw_now
 
    ; object things
    ldx #0
@@ -148,22 +130,57 @@ title_text: .res 2*32 ; buffer for tile data of titles before they're drawn. tex
    
    stz game_state
 
+   ; set bg and obj modes
+   lda #%00000001
+   sta BGMODE
+   lda #%00000000
+   sta OBSEL ; sssnnbbb
+   ; set tilemap address
+   lda #VRAM_BG1SC
+   sta BG1SC
+   lda #VRAM_BG2SC
+   sta BG2SC
+
+   jsr ClearVRAM
+   jsr CharLoad ; load character data to VRAM
+   jsr ClearCGRAM
+   jsr SetPalette
+   jsr ClearOAMBuffer
+   jsr LoadOBJ
+   jsr ClearText
+   jsr DrawTitle
+   jsr DrawScore
+   jsr BG2Load
+   jsr UpdateOAM
+   
+   ; set main & subscreen designations
+   lda #%00010011
+   sta TM
+   lda #%00000010
+   sta TS
+
+   lda #$0f
+   sta INIDISP
+
+   ; enable non-maskable interrupt
+   lda #$81
+   sta NMITIMEN
+
    ldx #0
 
    jmp GameLoop
 .endproc
 
+; MARK: GameLoop
 .proc GameLoop
    lda nmi_count
 @nmi_wait:
    wai
    cmp nmi_count
    beq @nmi_wait ; don't proceed until nmi_count changes
-
-   ; scroll screen
-   jsr ScrollBG
    
-   jsr UpdateCooldowns
+   jsr UpdateTimers
+
    ; check if game state is play
    lda game_state
    cmp #1
@@ -171,14 +188,14 @@ title_text: .res 2*32 ; buffer for tile data of titles before they're drawn. tex
       jsr ReadInput
       jsr TickBullets
       jsr TickEnemyBullets
-      jsr HandleCollisions
       jsr TickEnemy
+      jsr HandleCollisions
       jsr TickExplosions
    @frozen:
    
    jmp GameLoop
 .endproc
-
+; MARK: NMIHandler
 .proc NMIHandler
    setAXY16
    inc nmi_count
@@ -199,17 +216,14 @@ title_text: .res 2*32 ; buffer for tile data of titles before they're drawn. tex
    
    
    setAXY8
-   ; OAM needs to be updated first (which essentially delays sprite updates by 1 frame)
-   ; This is because sometimes logic takes long enough to miss the time when you can still
-   ; write to PPU registers, so sprites disappear for that frame (e.g. when I do an explosion)
-   lda game_state
-   beq @title
-      jsr UpdateOAM
-   @title:
-   
+   ; Run code that needs PPU registers (otherwise logic can take too long and skip update)
+   jsr UpdateOAM
+   jsr UpdateTitles
+   jsr ScrollBG
+
    rti ; return from interrupt
 .endproc
-
+; MARK: VECTOR
 .segment "VECTOR"
 ; native mode   COP,        BRK,        ABT,
 .addr           $0000,      $0000,      $0000

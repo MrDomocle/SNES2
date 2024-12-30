@@ -6,6 +6,7 @@
       lda label,y
       cmp #NULL
       beq @break
+         clc
          adc #VRAM_LETTER_START
          sta title_text,x
          inx
@@ -24,13 +25,14 @@
 .endmacro
 .macro LoadScoreText ; load bcd text as tiles to title_text
    ldx #0
-   ldy #3
+   ldy #2
    @loop:
       lda score_l,y
       .repeat 4
          lsr
       .endrepeat
-      adc #VRAM_LETTER_START
+      clc
+      adc #VRAM_NUMBER_START
       sta title_text,x
       inx
       lda #LETTER_ATTR
@@ -43,7 +45,8 @@
       .repeat 4
          lsr
       .endrepeat
-      adc #VRAM_LETTER_START
+      clc
+      adc #VRAM_NUMBER_START
       sta title_text,x
       inx
       lda #LETTER_ATTR
@@ -51,21 +54,47 @@
       inx
 
       dey
-      cpy #0
-      bne @loop
+      bpl @loop ; branch if y hasn't overflown to ff (high bit isn't 1)
 
    stz title_text,x
    inx
    lda #LETTER_ATTR
    sta title_text,x
 .endmacro
-; MARK: TITLE
+; MARK: TITLES
+; These put titles in queue
 .proc DrawTitle
-   jsr DrawTitleMain
-   jsr DrawTitleCredits
-   jsr DrawTitleCredits1
+   lda title_draw_now
+   ora #1
+   sta title_draw_now
    rts
 .endproc
+.proc DrawScore
+   lda title_draw_now
+   ora #2
+   sta title_draw_now
+   rts
+.endproc
+.proc DrawGameOver
+   lda title_draw_now
+   ora #4
+   sta title_draw_now
+   rts
+.endproc
+.proc DrawWin
+   lda title_draw_now
+   ora #8
+   sta title_draw_now
+   rts
+.endproc
+.proc Clear
+   lda title_draw_now
+   ora #128
+   sta title_draw_now
+   rts
+.endproc
+
+; These draw the titles
 .proc DrawTitleMain
    setXY16
    setA8
@@ -120,11 +149,21 @@
    rts
 .endproc
 
-.proc DrawScore
+.proc DrawScoreText
+   setXY16
+   setA8
+   LoadText score_text
+   ldy score_text_ofs
+   jsr DrawText
+   setXY8
+   rts
+.endproc
+
+.proc DrawScoreNum
    setXY16
    setA8
    LoadScoreText
-   ldy #32
+   ldy score_num_ofs
    jsr DrawText
    setXY8
    rts
@@ -138,12 +177,10 @@
    sta VMAIN
    setA16
    ; set VMADD to the correct offset
+   sty title_ofs
    lda #VRAM_BG1
-   @loop_add:
-      inc
-      dey
-      cpy #0
-      bne @loop_add
+   clc
+   adc title_ofs
    sta VMADDL
    ldx #0
    @loop:
@@ -159,6 +196,64 @@
    setAXY8
    rts
 .endproc
+.proc UpdateTitles
+   setAXY8
+   ; clearing is always first
+   lda title_draw_now
+   bit #128
+   beq @not_clear
+      stz MOSAIC
+      jsr ClearText
+      
+      lda title_draw_now
+      eor #128
+      sta title_draw_now
+   @not_clear:
+
+   ; check which titles were set to draw and draw them
+   lda title_draw_now
+   bit #1
+   beq @not_title
+      jsr DrawTitleMain
+      jsr DrawTitleCredits
+      jsr DrawTitleCredits1
+
+      lda title_draw_now
+      eor #1
+      sta title_draw_now
+   @not_title:
+   lda title_draw_now
+   bit #2
+   beq @not_score
+      jsr DrawScoreText
+      jsr DrawScoreNum
+
+      lda title_draw_now
+      eor #2
+      sta title_draw_now
+   jsr DrawScoreNum
+   @not_score:
+   lda title_draw_now
+   bit #4
+   beq @not_game_over
+      jsr DrawTitleGameOver
+
+      lda title_draw_now
+      eor #4
+      sta title_draw_now
+   @not_game_over:
+   lda title_draw_now
+   bit #8
+   beq @not_game_complete
+      jsr DrawTitleWin
+
+      lda title_draw_now
+      eor #8
+      sta title_draw_now
+   @not_game_complete:
+   rts
+.endproc
+
 .proc ClearText
    setXY16
    ldx #0
@@ -171,6 +266,7 @@
    doDMA empty_tile,0,<VMDATAL,TILEMAP_SIZE,%00001001 ; DMA without incrementing A address (copy empty_tile over and over)
    rts
 .endproc
+
 ; MARK: BG SCROLL
 .proc ScrollBG
    ; acceleration
@@ -273,7 +369,7 @@
          bra @apply
       @finish_title_out:
          stz mosaic_active
-         jsr ClearText
+         jsr Clear
          bra @return
 
    @bg_out:

@@ -1,29 +1,32 @@
+; MARK: CONSTANTS
 ; Technical constants
 VRAM_CHARS = $0000 ; vram offset of bg characters
-VRAM_BG1 = $1000 ; vram offset of tilemap 
-VRAM_BG2 = $2000 
-VRAM_BG1SC = %00010000 ; tilemap settings, including 6-bit address
-VRAM_BG2SC = %00100000 
-VRAM_LETTER_START = $7e ; in tilemap address format
+VRAM_BG1 = $1000 ; vram offset of bg1 tilemap 
+VRAM_BG2 = $2000 ; vram offset of bg2 tilemap 
+VRAM_BG1SC = %00010000 ; bg1 tilemap settings, including 6-bit VRAM offset
+VRAM_BG2SC = %00100000 ; bg2 tilemap settings, including 6-bit VRAM offset
+VRAM_LETTER_START = $7f ; in tilemap address format
 VRAM_NUMBER_START = $9c ; in tilemap address format
-LETTER_ATTR = $04 ; attribute for letter tiles
+LETTER_ATTR = $04 ; attribute byte for letter tiles
 VRAM_SIZE = $ffff ; size of vram in bytes
 CGRAM_SIZE = $0200 ; size of cgram in bytes
 OAM_SIZE = $0220 ; size of oam in bytes
+OAM_LO_SIZE = $0200 ; size of oam low table in bytes
 TILEMAP_SIZE = 32*32*2 ; size of a 32x32 tilemap in bytes
 
 ; Logic constants
 
 ; Scoring (USES BCD)
-ENEMY_DEAD_SCORE = $9999
-SCREEN_CLEAR_SCORE = $8192
+ENEMY_DEAD_SCORE = $1000
+SCREEN_CLEAR_SCORE = $9999
+TARGET_SCORE_H = $42
 
 ; Entity speeds
 BULLET_SPEED = 3 ; speed of bullets in pixels per frame
 BULLET_SPEED_ENEMY = 2
 ENEMY_HSPEED = 1 ; speed of enemies moving horizontally
 ; Timings
-TITLE_TIME = 240 ; time for title to stay in frames
+TITLE_TIME = 150 ; time for title to stay in frames
 EXPLODE_TIME = 8 ; frames between explosion stages
 SHOT_INTERVAL = 6 ; frames of cooldown between shots
 ENEMY_DIR_CHANGE_INTERVAL = 128 ; frames between randomising direction of amogi
@@ -41,8 +44,8 @@ ENEMY_TILE = $02
 EXPLODE_DISABLED_STAGE = $ff ; set to explode stage when there isn't an explosion in that slot
 
 ; Scrolling
-SCROLL_ACCEL_LO = 12 ; game -> game over
-SCROLL_ACCEL_MID = 24 ; title -> game
+SCROLL_ACCEL_LO = 12 ; game -> title
+SCROLL_ACCEL_MI = 24 ; title -> game
 SCROLL_ACCEL_HI = 48 ; game -> speedup
 
 SCROLL_SPEED_LO = 64 ; during titles
@@ -67,7 +70,7 @@ MOSAIC_SPEED_FADE_OUT_BG = 15
 
 .segment "CODE"
 ; MARK: CD & CONTROLS
-.proc UpdateCooldowns
+.proc UpdateTimers
    setXY16
    setA8
    lda shot_cooldown
@@ -100,13 +103,14 @@ MOSAIC_SPEED_FADE_OUT_BG = 15
          sta game_state
          jsr RandomiseEnemyPositions
    @title_done:
+
    lda amogus_timer
    beq @reset_amogus
       dec amogus_timer
       bra @done_amogus
    @reset_amogus:
-   lda #ENEMY_DIR_CHANGE_INTERVAL
-   sta amogus_timer
+      lda #ENEMY_DIR_CHANGE_INTERVAL
+      sta amogus_timer
    @done_amogus:
 
    @return:
@@ -164,7 +168,7 @@ MOSAIC_SPEED_FADE_OUT_BG = 15
       setXY16
       ldx #SCROLL_SPEED_MI
       stx screen_vscroll_speed_target
-      ldx #SCROLL_ACCEL_MID
+      ldx #SCROLL_ACCEL_MI
       stx screen_vscroll_accel
       setXY8
    @not_a_up:
@@ -212,19 +216,37 @@ MOSAIC_SPEED_FADE_OUT_BG = 15
 .endproc
 .proc AddScore ; load (16-bit BCD) increment to accumulator before call
    sed
+   clc
    adc score_l
    sta score_l
    bcc @return
       setA8
+      setXY8
       lda score_h
+      clc
       adc #1
       sta score_h
+      cmp #TARGET_SCORE_H
       bcc @return
-         ; 24 bit BCD (999,999) limit reached - win condition
+         ; A >= TARGET_SCORE_H
          cld
          lda #3
          sta game_state
-         jsr DrawTitleWin
+         
+         setA16
+         lda #SCROLL_ACCEL_LO
+         sta screen_vscroll_accel
+         lda #SCROLL_SPEED_LO
+         sta screen_vscroll_speed_target
+         setA8
+         setXY8
+         jsr Clear
+         jsr DrawWin
+         lda #1
+         sta oam_update
+         jsr MosaicFadeOutBG
+         ;setXY16
+         rts
    @return:
    setA16
    cld
@@ -233,6 +255,7 @@ MOSAIC_SPEED_FADE_OUT_BG = 15
 .endproc
 .proc MoveShip
    setA8
+   setXY16
    cpx #%00 ; up
    bne @not_up
       lda oam_lo+yc+ship
@@ -292,7 +315,8 @@ MOSAIC_SPEED_FADE_OUT_BG = 15
             jsr DrawTitleGameOver
             ldx #ship
             jsr Explode
-            jsr HideEnemies
+            lda #1
+            sta oam_update
             lda #MOSAIC_MASK_BG
             sta mosaic_mask
             jsr MosaicFadeOutBG
@@ -327,10 +351,14 @@ MOSAIC_SPEED_FADE_OUT_BG = 15
                cmp #HIT_RANGE ; compare to enemy x
                bcs @continue_b
                   ; increment score
+                  phx
+                  phy
                   setA16
                      lda #ENEMY_DEAD_SCORE
                      jsr AddScore
                   setA8
+                  ply
+                  plx
                   phy
                   jsr Explode ; hide enemy in x
                   ply
