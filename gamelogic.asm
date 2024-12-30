@@ -128,23 +128,51 @@ MOSAIC_SPEED_FADE_OUT_BG = 15
    beq @not_l
       ldx #%10
       jsr MoveShip
+      ; double if speedup
+      lda screen_vscroll_speed_target
+      cmp #SCROLL_SPEED_HI
+      bne @not_l
+      ldx #%10
+      jsr MoveShip
    @not_l:
+   lda joy1_buffer
    bit #$0100 ; right
    beq @not_r
       ldx #%11
       jsr MoveShip
+      ; double if speedup
+      lda screen_vscroll_speed_target
+      cmp #SCROLL_SPEED_HI
+      bne @not_r
+      ldx #%11
+      jsr MoveShip
    @not_r:
+   lda joy1_buffer
    bit #$0800 ; up
    beq @not_u
       ldx #%00
       jsr MoveShip
+      ; double if speedup
+      lda screen_vscroll_speed_target
+      cmp #SCROLL_SPEED_HI
+      bne @not_u
+      ldx #%00
+      jsr MoveShip
    @not_u:
+   lda joy1_buffer
    bit #$0400 ; down
    beq @not_d
       ldx #%01
       jsr MoveShip
+      ; double if speedup
+      lda screen_vscroll_speed_target
+      cmp #SCROLL_SPEED_HI
+      bne @not_d
+      ldx #%01
+      jsr MoveShip
    @not_d:
-
+   
+   lda joy1_buffer
    bit #$8000 ; b
    beq @not_b
       jsr ShootBullet
@@ -250,7 +278,6 @@ MOSAIC_SPEED_FADE_OUT_BG = 15
    @return:
    setA16
    cld
-   jsr DrawScore
    rts
 .endproc
 .proc MoveShip
@@ -350,6 +377,7 @@ MOSAIC_SPEED_FADE_OUT_BG = 15
                sbc oam_lo+xc,x
                cmp #HIT_RANGE ; compare to enemy x
                bcs @continue_b
+                  dec amogus_count 
                   ; increment score
                   phx
                   phy

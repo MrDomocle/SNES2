@@ -383,6 +383,12 @@
          setA8
          bra @apply
       @finish_bg_out:
+         lda amogus_transition
+         beq @not_amogus
+            ; if transition for resetting amogi, fade back in
+            jsr MosaicFadeInBG
+            bra @return
+         @not_amogus:
          stz mosaic_active
          bra @return
 
@@ -397,8 +403,25 @@
          setA8
          bra @apply
       @finish_bg_in:
-         ; start title fade out immediately
-         jsr MosaicFadeOutTitle
+         ; this is only called by amogus reset, so this is used to finish the reset
+         ; back up ship coordinates
+         lda oam_lo+xc+ship
+         sta ship_x
+         lda oam_lo+yc+ship
+         sta ship_y
+         ; reset oam
+         jsr LoadOBJ
+         jsr RandomiseEnemyPositions
+         ; restore ship coordinates
+         lda ship_x
+         sta oam_lo+xc+ship
+         lda ship_y
+         sta oam_lo+yc+ship
+
+         lda #POOL_SIZE_ENEMY
+         sta amogus_count
+         stz amogus_transition
+         stz mosaic_active
          bra @return
 
    @apply:

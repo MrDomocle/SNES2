@@ -32,6 +32,9 @@ joy1_buffer: .res 2 ; word, buffer for storing joypad data
 joy1_up: .res 2 ; mask for buttons that were released
 joy1_down: .res 2 ; mask for buttons that were pressed
 
+ship_x: .res 1 ; byte, ship's x coordinate backup
+ship_y: .res 1 ; byte, ship's y coordinate backup
+
 screen_vscroll_sub: .res 1 ; byte, overflows into screen_vscroll when using 16-bit addition/subtraction
 screen_vscroll: .res 1 ; byte, actual BG2VOFS (MSB of screen_vscroll_sub)
 screen_vscroll_speed: .res 2 ; word, speed of scroll in subpixels/frame
@@ -48,6 +51,8 @@ mosaic_mask: .res 1 ; byte, lower 4 bits of MOSAIC to determine which background
 mosaic_target: .res 1 ; byte, target mosaic stage
 mosaic_mode: .res 1 ; byte, 0 - hide title, 1 - game over (blur bg), 2 - game restart (fade in bg)
 
+amogus_count: .res 1 ; byte, number of amogi
+amogus_transition: .res 1 ; byte, set when transition to spawn new amogi is active
 amogus_timer: .res 1 ; byte, timer for updating amogus directions randomly
 amogus_directions: .res POOL_SIZE_ENEMY ; array of bytes
 amogus_shot_timers: .res POOL_SIZE_ENEMY ; array of bytes, cooldown between shots of each amogus
@@ -69,8 +74,6 @@ title_text: .res 2*32 ; array of words, buffer for tile data of titles before th
    xce ; swap carry and emulation bits
 
    setAXY8 ; start in 8-bit mode
-   
-
    ; MARK: variable init
    setA16
    stz ZERO
@@ -81,8 +84,7 @@ title_text: .res 2*32 ; array of words, buffer for tile data of titles before th
    stz nmi_count
    stz random_word
 
-   lda #$9999
-   sta score_l
+   stz score_l
    
    stz shot_cooldown
    stz joy1_buffer
@@ -97,9 +99,11 @@ title_text: .res 2*32 ; array of words, buffer for tile data of titles before th
    lda #$ffff
    sta screen_vscroll
    setA8
-   lda #$41
-   sta score_h
+   stz score_h
    stz amogus_timer
+   stz amogus_transition
+   lda #POOL_SIZE_ENEMY
+   sta amogus_count
    
    lda #4
    sta oam_update
@@ -191,6 +195,7 @@ title_text: .res 2*32 ; array of words, buffer for tile data of titles before th
       jsr TickEnemy
       jsr HandleCollisions
       jsr TickExplosions
+      jsr DrawScore
    @frozen:
    
    jmp GameLoop
@@ -203,7 +208,7 @@ title_text: .res 2*32 ; array of words, buffer for tile data of titles before th
    lda joy1_buffer
    sta joy1_buffer_last
 
-   lda JOY1L ; load joypad register now because vblank starts soon
+   lda JOY1L
    sta joy1_buffer
 
    eor joy1_buffer_last
@@ -216,7 +221,7 @@ title_text: .res 2*32 ; array of words, buffer for tile data of titles before th
    
    
    setAXY8
-   ; Run code that needs PPU registers (otherwise logic can take too long and skip update)
+   ; Run code that needs PPU registers (otherwise logic can take longer than vblank)
    jsr UpdateOAM
    jsr UpdateTitles
    jsr ScrollBG

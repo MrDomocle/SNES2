@@ -25,6 +25,21 @@
 .endproc
 .proc TickEnemy
    setAXY8
+   lda amogus_count
+   bne @not_reset
+      lda amogus_transition
+      bne @not_reset
+      ; prepare for reset
+      jsr MosaicFadeOutBG
+      lda #1
+      sta amogus_transition
+      ; add points
+      setA16
+      lda #SCREEN_CLEAR_SCORE
+      jsr AddScore
+      setA8
+      rts
+   @not_reset:
    ldx #enemy_first ; enemy oam offset
    ldy #0 ; enemy nummber
    @loop:
