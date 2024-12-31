@@ -7,7 +7,7 @@ It's written from scratch - I didn't use libraries that add a lot of functionali
 * **A** - move faster  
 * Win if you get `420,000` points! (send me screenshots if you do lol)  
 
-You can get the game ROM on the Releases page  
+You can get the ROM [here](https://github.com/MrDomocle/SNES2/releases/latest)  
 Not tested on real hardware, but works on Mesen and bsnes.  
 Snes9x does **NOT** work - and seemingly any other emulator that cares about the ROM header.  
 ## How I made this
