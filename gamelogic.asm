@@ -17,9 +17,9 @@ TILEMAP_SIZE = 32*32*2 ; size of a 32x32 tilemap in bytes
 ; Logic constants
 
 ; Scoring (USES BCD)
-ENEMY_DEAD_SCORE = $1000
+ENEMY_DEAD_SCORE = $1088
 SCREEN_CLEAR_SCORE = $9999
-TARGET_SCORE_H = $42
+TARGET_SCORE_H = $42 ; for 420,000 win condition
 
 ; Entity speeds
 BULLET_SPEED = 3 ; speed of bullets in pixels per frame
@@ -50,7 +50,7 @@ SCROLL_ACCEL_HI = 48 ; game -> speedup
 
 SCROLL_SPEED_LO = 64 ; during titles
 SCROLL_SPEED_MI = 1024 ; during gameplay
-SCROLL_SPEED_HI = 3400 ; speedup
+SCROLL_SPEED_HI = 2048 ; speedup
 
 ; Mosaic
 MOSAIC_MODE_FADE_OUT_TITLE = 0
